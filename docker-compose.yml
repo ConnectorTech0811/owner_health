@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: owner-health-backend
+    restart: always
+    ports:
+      # Map the port from the backend .env or fallback to 3001
+      - "${PORT:-3001}:${PORT:-3001}"
+    env_file:
+      - ./backend/.env
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Pass VITE_API_URL to the React build stage
+        # Fallback to backend port mapping on localhost if not provided
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
+    container_name: owner-health-frontend
+    restart: always
+    ports:
+      # Map container port 80 to host port 80 as requested
+      - "80:80"
+    depends_on:
+      - backend
