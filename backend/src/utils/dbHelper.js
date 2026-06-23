@@ -25,6 +25,7 @@ const memoryDb = {
       plano_produto: 'Apartamento',
       plano_numero_carteirinha: '1234567890120',
       plano_tipo: 'free',
+      plano_plataforma: 'free',
       status: 'ativo',
       pagamento_status: 'pago',
       lgpd_aceito: true,
@@ -92,7 +93,18 @@ const memoryDb = {
   profissional_empresas: [
     { profissional_id: 1, empresa_id: 1 }
   ],
-  aceites_lgpd: []
+  aceites_lgpd: [],
+  empresa_agendas: [],
+  empresa_anamnese_config: [],
+  empresa_documentos_emitidos: [],
+  medicamentos: [],
+  registro_medicamentos: [],
+  exames: [],
+  bioimpedancia: [],
+  anamnese: [],
+  satisfacao: [],
+  prescricoes: [],
+  efeitos_medicamentos: []
 };
 
 // Funções utilitárias
@@ -127,6 +139,11 @@ async function query(table, action, ...args) {
     // Fallback em memória
     console.log(`[MemoryDB Fallback] Ação '${action}' na tabela '${table}':`, error.message);
     
+    // Inicializa a tabela em memória se não existir
+    if (!memoryDb[table]) {
+      memoryDb[table] = [];
+    }
+
     if (action === 'select') {
       let results = [...memoryDb[table]];
       const filter = args[0];

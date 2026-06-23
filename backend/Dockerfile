@@ -1,19 +1,16 @@
 FROM node:20-alpine
 
-# Set the working directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy dependency definitions
+# Copia arquivos de dependência
 COPY package*.json ./
 
-# Install production dependencies
-RUN npm install --omit=dev
+# Instala apenas dependências de produção para otimização
+RUN npm install --only=production
 
-# Copy application source code
+# Copia o código da aplicação
 COPY . .
 
-# Expose port (default 3001)
 EXPOSE 3001
 
-# Command to run the application
 CMD ["node", "server.js"]

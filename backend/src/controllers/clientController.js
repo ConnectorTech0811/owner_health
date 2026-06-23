@@ -114,6 +114,7 @@ const registerClient = async (req, res) => {
       plano_produto,
       plano_numero_carteirinha,
       plano_tipo: 'free',
+      plano_plataforma: 'free',
       status: 'ativo',
       pagamento_status: 'pago',
       lgpd_aceito: true,
@@ -164,7 +165,8 @@ const updateClient = async (req, res) => {
     plano_empresa,
     plano_nome,
     plano_produto,
-    plano_numero_carteirinha
+    plano_numero_carteirinha,
+    plano_plataforma
   } = req.body;
 
   if (!endereco && logradouro && numero && cidade && estado && cep) {
@@ -185,7 +187,8 @@ const updateClient = async (req, res) => {
       plano_empresa,
       plano_nome,
       plano_produto,
-      plano_numero_carteirinha
+      plano_numero_carteirinha,
+      plano_plataforma
     });
 
     return res.json({ message: 'Perfil do cliente atualizado com sucesso!' });

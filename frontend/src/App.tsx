@@ -4,6 +4,7 @@ import { Login } from './pages/Login';
 import { RegisterChoice } from './pages/Register/RegisterChoice';
 import { RegisterClient } from './pages/Register/RegisterClient';
 import { RegisterCompany } from './pages/Register/RegisterCompany';
+import { RegisterProfessional } from './pages/Register/RegisterProfessional';
 import { Dashboard } from './pages/Dashboard/Dashboard';
 import { ClientList } from './pages/Clients/ClientList';
 import { CompanyList } from './pages/Companies/CompanyList';
@@ -14,17 +15,40 @@ import { DependentList } from './pages/Dependents/DependentList';
 import { Layout } from './components/Layout';
 import { PrivateRoute } from './components/PrivateRoute';
 
-// Novas importações do Portal de Clientes
+// Portal de Clientes
 import { ClientLogin } from './pages/Client/ClientLogin';
 import { ClientProfiles } from './pages/Client/ClientProfiles';
 import { ClientLayout } from './components/ClientLayout';
 import { ClientDashboard } from './pages/Client/ClientDashboard';
 import { ClientProfile } from './pages/Client/ClientProfile';
 import { ClientDependents } from './pages/Client/ClientDependents';
+import { ClientExams } from './pages/Client/ClientExams';
+import { ClientPrescriptions } from './pages/Client/ClientPrescriptions';
+import { ClientMedications } from './pages/Client/ClientMedications';
+import { ClientBioimpedance } from './pages/Client/ClientBioimpedance';
+import { ClientSymptoms } from './pages/Client/ClientSymptoms';
+import { ClientAnamnesis } from './pages/Client/ClientAnamnesis';
+import { ClientPlans } from './pages/Client/ClientPlans';
+import { ClientSatisfaction } from './pages/Client/ClientSatisfaction';
+import { ClientPrivacy } from './pages/Client/ClientPrivacy';
+import { ClientScheduling } from './pages/Client/ClientScheduling';
+import { ClientEvolution } from './pages/Client/ClientEvolution';
+import { ClientArticles } from './pages/Client/ClientArticles';
 
-// Importações de Recuperação de Senha
+// Recuperação de Senha
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
+
+// Portal de Hospitais / Clínicas
+import { CompanyLayout } from './components/CompanyLayout';
+import { CompanyDashboard } from './pages/Company/CompanyDashboard';
+import { CompanyProfessionals } from './pages/Company/CompanyProfessionals';
+import { CompanyScheduling } from './pages/Company/CompanyScheduling';
+import { CompanyHealthPlans } from './pages/Company/CompanyHealthPlans';
+import { CompanyPatientData } from './pages/Company/CompanyPatientData';
+import { CompanyPrescriptions } from './pages/Company/CompanyPrescriptions';
+import { CompanyAnamnesisConfig } from './pages/Company/CompanyAnamnesisConfig';
+import { CompanyPlans } from './pages/Company/CompanyPlans';
 
 function App() {
   return (
@@ -38,10 +62,11 @@ function App() {
         <Route path="/register" element={<RegisterChoice />} />
         <Route path="/register/client" element={<RegisterClient />} />
         <Route path="/register/company" element={<RegisterCompany />} />
+        <Route path="/register/professional" element={<RegisterProfessional />} />
 
-        {/* Rotas do Portal de Clientes (Públicas e Protegidas) */}
+        {/* Portal de Clientes (Públicas e Protegidas) */}
         <Route path="/client/login" element={<ClientLogin />} />
-        
+
         <Route path="/client/profiles" element={
           <PrivateRoute redirectTo="/client/login">
             <ClientProfiles />
@@ -55,13 +80,44 @@ function App() {
                 <Route path="/dashboard" element={<ClientDashboard />} />
                 <Route path="/profile" element={<ClientProfile />} />
                 <Route path="/dependents" element={<ClientDependents />} />
+                <Route path="/exams" element={<ClientExams />} />
+                <Route path="/prescriptions" element={<ClientPrescriptions />} />
+                <Route path="/medications" element={<ClientMedications />} />
+                <Route path="/bioimpedance" element={<ClientBioimpedance />} />
+                <Route path="/symptoms" element={<ClientSymptoms />} />
+                <Route path="/anamnesis" element={<ClientAnamnesis />} />
+                <Route path="/plans" element={<ClientPlans />} />
+                <Route path="/satisfaction" element={<ClientSatisfaction />} />
+                <Route path="/privacy" element={<ClientPrivacy />} />
+                <Route path="/scheduling" element={<ClientScheduling />} />
+                <Route path="/evolution" element={<ClientEvolution />} />
+                <Route path="/articles" element={<ClientArticles />} />
                 <Route path="*" element={<Navigate to="/client/dashboard" replace />} />
               </Routes>
             </ClientLayout>
           </PrivateRoute>
         } />
 
-        {/* Rotas Protegidas do Portal Administrativo (Geral) */}
+        {/* Portal de Hospitais / Clínicas */}
+        <Route path="/company/*" element={
+          <PrivateRoute redirectTo="/login">
+            <CompanyLayout>
+              <Routes>
+                <Route path="/dashboard" element={<CompanyDashboard />} />
+                <Route path="/professionals" element={<CompanyProfessionals />} />
+                <Route path="/scheduling" element={<CompanyScheduling />} />
+                <Route path="/health-plans" element={<CompanyHealthPlans />} />
+                <Route path="/patient-data" element={<CompanyPatientData />} />
+                <Route path="/prescriptions" element={<CompanyPrescriptions />} />
+                <Route path="/anamnesis-config" element={<CompanyAnamnesisConfig />} />
+                <Route path="/plans" element={<CompanyPlans />} />
+                <Route path="*" element={<Navigate to="/company/dashboard" replace />} />
+              </Routes>
+            </CompanyLayout>
+          </PrivateRoute>
+        } />
+
+        {/* Rotas Protegidas do Portal Administrativo */}
         <Route path="/*" element={
           <PrivateRoute redirectTo="/login">
             <Layout>

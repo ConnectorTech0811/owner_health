@@ -168,11 +168,167 @@ const updatePaymentStatus = async (req, res) => {
   }
 };
 
+const getCompanySchedules = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const schedules = await dbHelper.query('empresa_agendas', 'select', { empresa_id: parseInt(id) });
+    return res.json(schedules);
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro ao listar agendas' });
+  }
+};
+
+const createCompanySchedule = async (req, res) => {
+  const { id } = req.params;
+  const { profissional_id, data, horario_inicio, horario_fim } = req.body;
+  if (!profissional_id || !data || !horario_inicio || !horario_fim) {
+    return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+  }
+  try {
+    const [insertedId] = await dbHelper.query('empresa_agendas', 'insert', {
+      empresa_id: parseInt(id),
+      profissional_id: parseInt(profissional_id),
+      data,
+      horario_inicio,
+      horario_fim,
+      status: 'disponivel'
+    });
+    return res.status(201).json({ message: 'Agenda criada com sucesso!', id: insertedId });
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro ao criar agenda' });
+  }
+};
+
+const getAnamnesisConfig = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const configs = await dbHelper.query('empresa_anamnese_config', 'select', { empresa_id: parseInt(id) });
+    if (configs.length === 0) {
+      const defaultConfig = {
+        empresa_id: parseInt(id),
+        campos_ativos: JSON.stringify({
+          queixa_principal: true,
+          historico_doencas: true,
+          alergias: true,
+          medicamentos_uso: true,
+          historico_familiar: true,
+          habitos: true,
+          pressao_arterial: true,
+          glicemia: true,
+          cirurgias_anteriores: true
+        })
+      };
+      await dbHelper.query('empresa_anamnese_config', 'insert', defaultConfig);
+      return res.json(defaultConfig);
+    }
+    return res.json(configs[0]);
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro ao obter configuração de anamnese' });
+  }
+};
+
+const updateAnamnesisConfig = async (req, res) => {
+  const { id } = req.params;
+  const { campos_ativos } = req.body;
+  try {
+    const configs = await dbHelper.query('empresa_anamnese_config', 'select', { empresa_id: parseInt(id) });
+    const activeFieldsStr = typeof campos_ativos === 'object' ? JSON.stringify(campos_ativos) : campos_ativos;
+    if (configs.length === 0) {
+      await dbHelper.query('empresa_anamnese_config', 'insert', {
+        empresa_id: parseInt(id),
+        campos_ativos: activeFieldsStr
+      });
+    } else {
+      await dbHelper.query('empresa_anamnese_config', 'update', { empresa_id: parseInt(id) }, {
+        campos_ativos: activeFieldsStr
+      });
+    }
+    return res.json({ message: 'Configuração atualizada com sucesso!' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro ao salvar configuração' });
+  }
+};
+
+const getSharedPatientData = async (req, res) => {
+  const { cpfOrCode } = req.params;
+  try {
+    let client = null;
+    const cleanCpf = cpfOrCode.replace(/\D/g, '');
+
+    const clients = await dbHelper.query('clientes', 'select');
+    client = clients.find(c => c.cpf.replace(/\D/g, '') === cleanCpf);
+
+    if (!client) {
+      client = clients.find(c => String(c.id) === cpfOrCode || c.email.toLowerCase() === cpfOrCode.toLowerCase());
+    }
+
+    if (!client) {
+      return res.status(404).json({ error: 'Paciente não encontrado ou compartilhamento não autorizado.' });
+    }
+
+    const exams = await dbHelper.query('exames', 'select', { cliente_id: client.id });
+    const prescriptions = await dbHelper.query('receitas', 'select', { cliente_id: client.id });
+    const bioimpedance = await dbHelper.query('bioimpedancia', 'select', { cliente_id: client.id });
+    const anamnesis = await dbHelper.query('anamnese', 'select', { cliente_id: client.id });
+
+    return res.json({
+      patient: {
+        id: client.id,
+        nome: client.nome,
+        cpf: client.cpf,
+        email: client.email,
+        celular: client.celular,
+        data_nascimento: client.data_nascimento,
+        endereco: client.endereco,
+        plano_empresa: client.plano_empresa,
+        plano_nome: client.plano_nome,
+        plano_produto: client.plano_produto,
+        plano_numero_carteirinha: client.plano_numero_carteirinha
+      },
+      exams,
+      prescriptions,
+      bioimpedance,
+      anamnesis
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erro ao obter dados compartilhados do paciente' });
+  }
+};
+
+const createCompanyDocument = async (req, res) => {
+  const { id } = req.params;
+  const { profissional_id, paciente_cpf, tipo, conteudo, assinado_digitalmente } = req.body;
+  if (!paciente_cpf || !tipo || !conteudo) {
+    return res.status(400).json({ error: 'Preencha todos os campos obrigatórios' });
+  }
+  try {
+    const [insertedId] = await dbHelper.query('empresa_documentos_emitidos', 'insert', {
+      empresa_id: parseInt(id),
+      profissional_id: profissional_id ? parseInt(profissional_id) : null,
+      paciente_cpf,
+      tipo,
+      conteudo,
+      assinado_digitalmente: !!assinado_digitalmente,
+      criado_em: new Date().toISOString()
+    });
+    return res.status(201).json({ message: 'Documento emitido e assinado com sucesso!', id: insertedId });
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro ao emitir documento' });
+  }
+};
+
 module.exports = {
   getCompanies,
   getCompanyById,
   registerCompany,
   addCompanyHealthPlan,
   removeCompanyHealthPlan,
-  updatePaymentStatus
+  updatePaymentStatus,
+  getCompanySchedules,
+  createCompanySchedule,
+  getAnamnesisConfig,
+  updateAnamnesisConfig,
+  getSharedPatientData,
+  createCompanyDocument
 };

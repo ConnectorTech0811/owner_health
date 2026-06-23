@@ -122,7 +122,16 @@ const registerProfessional = async (req, res) => {
     endereco = `${logradouro}, ${numero}${complemento ? ' - ' + complemento : ''}${bairro ? ', ' + bairro : ''}${cidade ? ', ' + cidade : ''} - ${estado}, CEP: ${cep}`;
   }
 
-  if (!nome || !cpf || !data_nascimento || !endereco || !numero_conselho || !email || !senha) {
+  // Validação de e-mail corporativo (bloqueia e-mails públicos para profissionais)
+  const publicEmailDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'yahoo.com.br', 'live.com', 'aol.com', 'icloud.com', 'msn.com', 'terra.com.br', 'uol.com.br', 'bol.com.br'];
+  const emailDomain = email && email.includes('@') ? email.split('@')[1].toLowerCase() : '';
+  if (publicEmailDomains.includes(emailDomain)) {
+    return res.status(400).json({ error: 'E-mails públicos (como Gmail, Outlook, Yahoo) não são permitidos para profissionais.' });
+  }
+
+  const isMedical = !tipo_profissional || !['secretario', 'administrativo'].includes(tipo_profissional.toLowerCase());
+
+  if (!nome || !cpf || !data_nascimento || !endereco || (isMedical && !numero_conselho) || !email || !senha) {
     return res.status(400).json({ error: 'Preencha todos os campos obrigatórios' });
   }
 

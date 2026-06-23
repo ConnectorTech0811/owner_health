@@ -37,10 +37,24 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     navigate('/login');
   };
 
+  React.useEffect(() => {
+    if (activeRole === 'client' || activeRole === 'dependent') {
+      navigate('/client/dashboard');
+    } else if (activeRole === 'company') {
+      navigate('/company/dashboard');
+    }
+  }, [activeRole, navigate]);
+
   const handleRoleChange = (role: string) => {
     localStorage.setItem('activeRole', role);
     setRoleMenuOpen(false);
-    navigate('/dashboard');
+    if (role === 'client' || role === 'dependent') {
+      navigate('/client/dashboard');
+    } else if (role === 'company') {
+      navigate('/company/dashboard');
+    } else {
+      navigate('/dashboard');
+    }
     window.location.reload(); // Recarregar para re-renderizar menus e dashboards
   };
 

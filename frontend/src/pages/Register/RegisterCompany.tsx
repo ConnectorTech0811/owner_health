@@ -1,406 +1,335 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HeartPulse, Mail, Lock, Building2, User, FileText, Phone, MapPin, Hash, Loader2 } from 'lucide-react';
+import {
+  Building2, Mail, Lock, Eye, EyeOff, MapPin, Phone, FileText,
+  User, Loader2, CheckSquare, ArrowLeft, Shield
+} from 'lucide-react';
 import { API_URL } from '../../config';
+
+const STEPS = ['Instituição & Endereço', 'Responsável', 'Acesso & Segurança'];
 
 export const RegisterCompany: React.FC = () => {
   const navigate = useNavigate();
+  const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  const [form, setForm] = useState({
-    razao_social: '',
-    nome_fantasia: '',
-    cnpj: '',
-    nome_responsavel: '',
-    cpf_responsavel: '',
-    cargo_responsavel: '',
-    email: '',
-    celular: '',
-    cep: '',
-    logradouro: '',
-    numero: '',
-    complemento: '',
-    bairro: '',
-    cidade: '',
-    estado: '',
-    senha: '',
-    confirmar_senha: ''
-  });
+  const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
 
-  const handleCepBlur = async () => {
-    const cep = form.cep.replace(/\D/g, '');
+  const [form, setForm] = useState({
+    razao_social: '', nome_fantasia: '', cnpj: '', celular: '',
+    nome_responsavel: '', cpf_responsavel: '', cargo_responsavel: '', email: '',
+    cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '',
+    senha: '', confirmar_senha: '', acceptLGPD: false,
+  });
+
+  const sf = (field: string, value: string | boolean) =>
+    setForm(prev => ({ ...prev, [field]: value }));
+
+  const fetchCep = async (cepValue?: string) => {
+    const cep = (cepValue || form.cep).replace(/\D/g, '');
     if (cep.length !== 8) return;
     setCepLoading(true);
+    setError('');
     try {
       const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
       const data = await res.json();
-      if (!data.erro) {
+      if (data.erro) {
+        setError('CEP não encontrado. Por favor, verifique o número.');
+      } else {
         setForm(prev => ({
           ...prev,
           logradouro: data.logradouro || prev.logradouro,
           bairro: data.bairro || prev.bairro,
           cidade: data.localidade || prev.cidade,
-          estado: data.uf || prev.estado
+          estado: data.uf || prev.estado,
         }));
       }
-    } catch {}
-    finally { setCepLoading(false); }
+    } catch {
+      setError('Erro ao buscar o CEP. Verifique sua conexão ou digite manualmente.');
+    } finally { setCepLoading(false); }
+  };
+
+  const handleCepChange = (val: string) => {
+    const formatted = val.replace(/\D/g, '').replace(/(\d{5})(\d)/, '$1-$2').slice(0, 9);
+    sf('cep', formatted);
+    const cleanCep = formatted.replace(/\D/g, '');
+    if (cleanCep.length === 8) {
+      fetchCep(cleanCep);
+    }
+  };
+
+  const handleNext = () => {
+    setError('');
+    if (step === 0) {
+      if (!form.razao_social || !form.nome_fantasia || !form.cnpj || !form.celular) {
+        setError('Preencha todos os campos obrigatórios'); return;
+      }
+      if (!form.cep || !form.logradouro || !form.numero) {
+        setError('Preencha CEP, logradouro e número da instituição'); return;
+      }
+    }
+    if (step === 1) {
+      if (!form.nome_responsavel || !form.cpf_responsavel || !form.email) {
+        setError('Preencha nome, CPF e e-mail do responsável'); return;
+      }
+    }
+    setStep(s => s + 1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    if (!form.acceptLGPD) { setError('Você deve aceitar os termos de LGPD'); return; }
+    if (form.senha !== form.confirmar_senha) { setError('As senhas não coincidem'); return; }
+    if (form.senha.length < 6) { setError('A senha deve ter no mínimo 6 caracteres'); return; }
 
-    if (form.senha !== form.confirmar_senha) {
-      setError('As senhas não coincidem');
-      return;
-    }
-
-    setLoading(true);
+    setLoading(true); setError('');
     try {
-      const response = await fetch(`${API_URL}/api/companies/register`, {
+      const res = await fetch(`${API_URL}/api/companies/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify(form),
       });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao realizar cadastro corporativo');
-      }
-
-      setSuccess('Cadastro corporativo realizado com sucesso! Redirecionando para login...');
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao realizar cadastro');
+      setSuccess(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao cadastrar');
+    } finally { setLoading(false); }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-[2rem] shadow-2xl p-10 max-w-md w-full text-center">
+          <div className="w-20 h-20 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-6">
+            <CheckSquare className="w-10 h-10 text-violet-500" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 mb-3">Cadastro Enviado!</h2>
+          <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+            Seu cadastro corporativo foi enviado com sucesso. Após validação, você receberá as credenciais de acesso.
+          </p>
+          <button onClick={() => navigate('/login')}
+            className="w-full py-3 rounded-xl font-bold text-white text-sm"
+            style={{ background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }}>
+            Voltar ao Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 md:p-8">
-      <div className="max-w-4xl w-full bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[650px] animate-fadeIn">
-        
-        {/* Lado Esquerdo - Info */}
-        <div className="hidden md:flex w-1/3 relative text-white flex-col justify-between p-10" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%)' }}>
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(30,58,138,0.95) 0%, rgba(29,78,216,0.3) 60%, transparent 100%)' }} />
-          
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-8">
-              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                <HeartPulse className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-black text-md">Owner Health</span>
+      <div className="max-w-2xl w-full bg-white rounded-[2rem] shadow-2xl overflow-hidden">
+
+        {/* Header */}
+        <div className="px-8 pt-8 pb-6 border-b border-slate-100">
+          <button onClick={() => navigate('/login')} className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition mb-5">
+            <ArrowLeft className="w-4 h-4" /> Voltar ao login
+          </button>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }}>
+              <Building2 className="w-6 h-6 text-white" />
             </div>
-            
-            <h3 className="text-2xl font-black leading-tight">Painel Corporativo Clínico</h3>
-            <p className="text-xs text-blue-100 mt-3 font-semibold leading-relaxed">
-              Associe sua clínica ou hospital, controle os profissionais do seu corpo clínico, os planos aceitos e otimize seus pré-atendimentos.
-            </p>
+            <div>
+              <h1 className="text-2xl font-black text-slate-800">Cadastro de Hospital / Clínica</h1>
+              <p className="text-sm text-slate-500 font-medium">Gerencie profissionais e planos atendidos</p>
+            </div>
           </div>
 
-          <div className="relative z-10 text-[10px] text-blue-200 font-bold uppercase tracking-wider">
-            Plano Empresa • Corporativo
+          {/* Steps */}
+          <div className="flex items-center gap-2">
+            {STEPS.map((label, i) => (
+              <React.Fragment key={i}>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all"
+                    style={{
+                      background: i <= step ? 'linear-gradient(135deg, #7c3aed, #8b5cf6)' : '#f1f5f9',
+                      color: i <= step ? 'white' : '#94a3b8',
+                    }}>
+                    {i < step ? '✓' : i + 1}
+                  </div>
+                  <span className={`text-xs font-bold hidden sm:block ${i === step ? 'text-violet-600' : 'text-slate-400'}`}>{label}</span>
+                </div>
+                {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 rounded-full ${i < step ? 'bg-violet-400' : 'bg-slate-100'}`} />}
+              </React.Fragment>
+            ))}
           </div>
         </div>
 
-        {/* Lado Direito - Formulário */}
-        <div className="w-full md:w-2/3 p-8 md:p-12">
-          <div className="mb-8">
-            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Cadastro de Hospital / Clínica</h2>
-            <p className="text-xs text-slate-500 font-bold mt-1">Preencha os dados organizacionais abaixo para iniciar</p>
-            <div className="w-12 h-1 bg-blue-600 mt-3 rounded-full" />
-          </div>
-
-          {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold mb-4">{error}</div>}
-          {success && <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl text-xs font-bold mb-4">{success}</div>}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              <div className="md:col-span-2">
-                <h4 className="text-xs font-black text-slate-700 border-b border-slate-100 pb-2">Dados da Instituição</h4>
-              </div>
-
-              {/* Razão Social */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Razão Social</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <Building2 className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text" required
-                    value={form.razao_social}
-                    onChange={e => setForm({...form, razao_social: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                    placeholder="Razão Social Ltda"
-                  />
-                </div>
-              </div>
-
-              {/* Nome Fantasia */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Nome Fantasia</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <Building2 className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text" required
-                    value={form.nome_fantasia}
-                    onChange={e => setForm({...form, nome_fantasia: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                    placeholder="Nome Fantasia da Clínica"
-                  />
-                </div>
-              </div>
-
-              {/* CNPJ */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">CNPJ</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <FileText className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text" required placeholder="00.000.000/0000-00"
-                    value={form.cnpj}
-                    onChange={e => setForm({...form, cnpj: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Celular / Telefone */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Telefone Comercial</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <Phone className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text" required placeholder="(00) 0000-0000"
-                    value={form.celular}
-                    onChange={e => setForm({...form, celular: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="md:col-span-2">
-                <h4 className="text-xs font-black text-slate-700 mt-2 border-b border-slate-100 pb-2">Dados do Responsável</h4>
-              </div>
-
-              {/* Nome Responsável */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Nome do Responsável</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <User className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text" required
-                    value={form.nome_responsavel}
-                    onChange={e => setForm({...form, nome_responsavel: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                    placeholder="Nome completo"
-                  />
-                </div>
-              </div>
-
-              {/* CPF Responsável */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">CPF do Responsável</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <User className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text" required placeholder="000.000.000-00"
-                    value={form.cpf_responsavel}
-                    onChange={e => setForm({...form, cpf_responsavel: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Cargo Responsável */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Cargo do Responsável</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <Building2 className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text" required placeholder="Diretor, Administrador..."
-                    value={form.cargo_responsavel}
-                    onChange={e => setForm({...form, cargo_responsavel: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div />
-
-              <div className="md:col-span-2">
-                <h4 className="text-xs font-black text-slate-700 mt-2 border-b border-slate-100 pb-2">Endereço da Instituição</h4>
-              </div>
-
-              {/* CEP */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">CEP</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    {cepLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-                  </span>
-                  <input
-                    type="text" required placeholder="00000-000"
-                    value={form.cep}
-                    onChange={e => setForm({...form, cep: e.target.value.replace(/\D/g,'').replace(/(\d{5})(\d)/,'$1-$2').slice(0,9)})}
-                    onBlur={handleCepBlur}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                    maxLength={9}
-                  />
-                </div>
-              </div>
-
-              {/* Número */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Número</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <Hash className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text" required placeholder="Ex: 123"
-                    value={form.numero}
-                    onChange={e => setForm({...form, numero: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Logradouro */}
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-600 mb-1">Logradouro</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <MapPin className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text" required placeholder="Rua, Avenida..."
-                    value={form.logradouro}
-                    onChange={e => setForm({...form, logradouro: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Estado */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Estado (UF)</label>
-                <input
-                  type="text" required placeholder="Ex: SP"
-                  value={form.estado}
-                  onChange={e => setForm({...form, estado: e.target.value.toUpperCase().slice(0,2)})}
-                  maxLength={2}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none"
-                />
-              </div>
-
-              {/* Complemento */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Complemento <span className="text-slate-400 font-normal">(opcional)</span></label>
-                <input
-                  type="text" placeholder="Sala, Andar..."
-                  value={form.complemento}
-                  onChange={e => setForm({...form, complemento: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <h4 className="text-xs font-black text-slate-700 mt-2 border-b border-slate-100 pb-2">Credenciais de Acesso</h4>
-              </div>
-
-              {/* E-mail */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">E-mail Corporativo (Login)</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <Mail className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="email" required placeholder="clinica@empresa.com"
-                    value={form.email}
-                    onChange={e => setForm({...form, email: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div />
-
-              {/* Senha */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Senha</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <Lock className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="password" required placeholder="sua senha"
-                    value={form.senha}
-                    onChange={e => setForm({...form, senha: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Confirmar Senha */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Confirmar Senha</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <Lock className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="password" required placeholder="sua senha"
-                    value={form.confirmar_senha}
-                    onChange={e => setForm({...form, confirmar_senha: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-8 space-y-5">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-semibold flex gap-2">
+              <span>⚠️</span><span>{error}</span>
             </div>
+          )}
 
-            <div className="flex gap-4 pt-4 border-t border-slate-100 mt-6">
-              <button
-                type="button"
-                onClick={() => navigate('/register')}
-                className="w-1/3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors"
-              >
+          {/* ── Step 0: Instituição & Endereço ── */}
+          {step === 0 && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <F label="Razão Social *" id="razao_social" value={form.razao_social} onChange={v => sf('razao_social', v)}
+                  icon={<Building2 className="w-4 h-4" />} placeholder="Razão Social Ltda" color="violet" colSpan />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <F label="Nome Fantasia *" id="nome_fantasia" value={form.nome_fantasia} onChange={v => sf('nome_fantasia', v)}
+                  icon={<Building2 className="w-4 h-4" />} placeholder="Nome da Clínica" color="violet" />
+                <F label="CNPJ *" id="cnpj" value={form.cnpj} onChange={v => sf('cnpj', v)}
+                  icon={<FileText className="w-4 h-4" />} placeholder="00.000.000/0000-00" color="violet" />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">CEP *</label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                      {cepLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                    </div>
+                    <input value={form.cep}
+                      onChange={e => handleCepChange(e.target.value)}
+                      onBlur={() => fetchCep()} placeholder="00000-000" maxLength={9}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition" />
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <F label="Logradouro *" id="logradouro" value={form.logradouro} onChange={v => sf('logradouro', v)}
+                    icon={<MapPin className="w-4 h-4" />} placeholder="Rua, Avenida..." color="violet" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <F label="Número *" id="numero" value={form.numero} onChange={v => sf('numero', v)} placeholder="123" color="violet" />
+                <F label="Complemento" id="complemento" value={form.complemento} onChange={v => sf('complemento', v)} placeholder="Sala, Apto" color="violet" />
+                <F label="Bairro" id="bairro" value={form.bairro} onChange={v => sf('bairro', v)} placeholder="Bairro" color="violet" />
+                <F label="Cidade" id="cidade" value={form.cidade} onChange={v => sf('cidade', v)} placeholder="Cidade" color="violet" />
+                <F label="UF" id="estado" value={form.estado} onChange={v => sf('estado', v.toUpperCase().slice(0, 2))} placeholder="SP" color="violet" />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <F label="Telefone Comercial *" id="celular" value={form.celular} onChange={v => sf('celular', v)}
+                  icon={<Phone className="w-4 h-4" />} placeholder="(00) 0000-0000" color="violet" />
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 1: Responsável ── */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <F label="Nome do Responsável *" id="nome_responsavel" value={form.nome_responsavel}
+                  onChange={v => sf('nome_responsavel', v)} icon={<User className="w-4 h-4" />}
+                  placeholder="Nome completo" color="violet" colSpan />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <F label="CPF do Responsável *" id="cpf_responsavel" value={form.cpf_responsavel}
+                  onChange={v => sf('cpf_responsavel', v)} icon={<User className="w-4 h-4" />}
+                  placeholder="000.000.000-00" color="violet" />
+                <F label="Cargo" id="cargo_responsavel" value={form.cargo_responsavel}
+                  onChange={v => sf('cargo_responsavel', v)} placeholder="Diretor, Administrador..." color="violet" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <F label="E-mail Corporativo *" id="email" type="email" value={form.email}
+                  onChange={v => sf('email', v)} icon={<Mail className="w-4 h-4" />}
+                  placeholder="clinica@empresa.com" color="violet" colSpan />
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 2: Acesso & Segurança ── */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <div className="bg-violet-50 border border-violet-100 rounded-xl p-4 flex items-start gap-3">
+                <Shield className="w-5 h-5 text-violet-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-violet-700 font-medium leading-relaxed">
+                  Seu login será o e-mail corporativo informado anteriormente: <strong>{form.email}</strong>. Defina uma senha segura abaixo.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Senha *</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input type={showPassword ? 'text' : 'password'} value={form.senha}
+                    onChange={e => sf('senha', e.target.value)} placeholder="Mínimo 6 caracteres"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-12 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Confirmar Senha *</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input type="password" value={form.confirmar_senha}
+                    onChange={e => sf('confirmar_senha', e.target.value)} placeholder="Repita a senha"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition" />
+                </div>
+              </div>
+
+              {/* LGPD */}
+              <div className="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all"
+                style={{ borderColor: form.acceptLGPD ? '#7c3aed' : '#e2e8f0', background: form.acceptLGPD ? '#f5f3ff' : '#f8fafc' }}
+                onClick={() => sf('acceptLGPD', !form.acceptLGPD)}>
+                <div className="w-5 h-5 border-2 rounded flex items-center justify-center shrink-0 mt-0.5 transition-all"
+                  style={{ background: form.acceptLGPD ? '#7c3aed' : 'white', borderColor: form.acceptLGPD ? '#7c3aed' : '#cbd5e1' }}>
+                  {form.acceptLGPD && <span className="text-white text-[10px] font-black">✓</span>}
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                  Li e aceito os <span className="font-bold text-violet-600">Termos de Uso</span> e a{' '}
+                  <span className="font-bold text-violet-600">Política de Privacidade (LGPD)</span> da plataforma Owner Health.
+                  Autorizo o tratamento dos dados da instituição conforme descrito.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation */}
+          <div className="flex gap-3 pt-2">
+            {step > 0 && (
+              <button type="button" onClick={() => setStep(s => s - 1)}
+                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
                 Voltar
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-2/3 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary-600/10"
-              >
-                {loading ? 'Cadastrando...' : 'Finalizar Cadastro'}
+            )}
+            {step < STEPS.length - 1 ? (
+              <button type="button" onClick={handleNext}
+                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition"
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }}>
+                Próximo →
               </button>
-            </div>
-          </form>
-        </div>
+            ) : (
+              <button type="submit" disabled={loading}
+                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }}>
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Cadastrando...</> : 'Finalizar Cadastro'}
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ── Campo auxiliar ────────────────────────────────────────────────────────────
+interface FProps {
+  label: string; id: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; type?: string; icon?: React.ReactNode; color?: string; colSpan?: boolean;
+}
+const F: React.FC<FProps> = ({ label, id, value, onChange, placeholder, type = 'text', icon, color = 'blue', colSpan }) => {
+  const borderFocus = color === 'violet' ? 'focus:border-violet-500 focus:ring-violet-500/10' : 'focus:border-blue-500 focus:ring-blue-500/10';
+  return (
+    <div className={colSpan ? 'md:col-span-2' : ''}>
+      <label htmlFor={id} className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>
+      <div className="relative">
+        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
+        <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+          className={`w-full bg-slate-50 border border-slate-200 rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none ${borderFocus} focus:ring-2 transition`} />
       </div>
     </div>
   );
