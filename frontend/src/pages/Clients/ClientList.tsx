@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, X, User, Mail, Lock, Calendar, Phone, MapPin, Hash, Loader2, Save, Eye, EyeOff } from 'lucide-react';
+import { Users, Plus, X, User, Mail, Lock, Calendar, Phone, MapPin, Hash, Loader2, Save, Eye, EyeOff, Eye as EyeIcon } from 'lucide-react';
 import { API_URL } from '../../config';
 
 // Mascara CPF: 000.000.000-00
@@ -19,6 +19,7 @@ export const ClientList: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
+  const [viewingClient, setViewingClient] = useState<any>(null);
 
   const token = localStorage.getItem('token');
 
@@ -226,6 +227,7 @@ export const ClientList: React.FC = () => {
                 <th className="p-4">Plano de Saúde</th>
                 <th className="p-4">Status Acesso</th>
                 <th className="p-4">Pagamento</th>
+                <th className="p-4 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold">
@@ -270,10 +272,122 @@ export const ClientList: React.FC = () => {
                       {(client.pagamento_status || 'pago') === 'pago' ? 'Pago' : 'Pendente'}
                     </button>
                   </td>
+                  <td className="p-4 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => setViewingClient(client)}
+                      className="p-1.5 bg-slate-100 hover:bg-indigo-100 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                      title="Visualizar Dados"
+                    >
+                      <EyeIcon className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal Visualizar Cliente */}
+      {viewingClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setViewingClient(null)} />
+          <div className="bg-white rounded-3xl w-full max-w-3xl p-6 md:p-8 relative z-10 max-h-[90vh] overflow-y-auto shadow-2xl animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-800">Dados do Cliente</h3>
+                  <p className="text-sm font-semibold text-slate-500">Visualização de perfil</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingClient(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Dados Pessoais</h4>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Nome Completo</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingClient.nome}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">CPF</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingClient.cpf}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Data Nascimento</p>
+                    <p className="text-sm font-bold text-slate-800">{new Date(viewingClient.data_nascimento).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Sexo</p>
+                    <p className="text-sm font-bold text-slate-800 capitalize">{viewingClient.sexo || 'Não informado'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Contato & Endereço</h4>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">E-mail</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingClient.email || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Celular</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingClient.celular || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Endereço</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingClient.endereco || 'Não informado'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 md:col-span-2">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Plano de Saúde</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Operadora</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingClient.plano_empresa || 'Particular'}</p>
+                  </div>
+                  {viewingClient.plano_empresa && (
+                    <>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Plano</p>
+                        <p className="text-sm font-bold text-slate-800">{viewingClient.plano_nome}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Acomodação</p>
+                        <p className="text-sm font-bold text-slate-800">{viewingClient.plano_produto}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Carteirinha</p>
+                        <p className="text-sm font-bold text-slate-800">{viewingClient.plano_numero_carteirinha}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end pt-6 mt-6 border-t border-slate-100">
+              <button
+                onClick={() => setViewingClient(null)}
+                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-bold text-slate-600 transition-colors cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

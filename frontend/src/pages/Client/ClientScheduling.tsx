@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Loader2, Check, Clock, User, Shield, ChevronRight, Phone, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { API_URL } from '../../config';
 
 interface Professional {
   id: number; nome: string; especialidade: string; conselho: string;
   clinica: string; planos: string[]; cep: string; cidade: string;
-  estado: string; preco: number;
+  estado: string; preco: number; celular?: string;
 }
 
 interface Appointment {
@@ -18,33 +19,7 @@ interface Appointment {
   status: string;
 }
 
-const MOCK_PROFESSIONALS: Professional[] = [
-  {
-    id: 1, nome: 'Dr. Roberto Santos', especialidade: 'Cardiologia', conselho: 'CRM-SP 123456',
-    clinica: 'Clínica Saúde Total', planos: ['Unimed', 'Bradesco Saúde', 'Amil'], cep: '01311-000',
-    cidade: 'São Paulo', estado: 'SP', preco: 180
-  },
-  {
-    id: 2, nome: 'Dra. Julia Alencar', especialidade: 'Clínico Geral', conselho: 'CRM-SP 654321',
-    clinica: 'Hospital Central Med', planos: ['Unimed', 'Amil', 'SulAmérica'], cep: '01210-000',
-    cidade: 'São Paulo', estado: 'SP', preco: 150
-  },
-  {
-    id: 3, nome: 'Dr. Marcos Souza', especialidade: 'Endocrinologia', conselho: 'CRM-SP 789123',
-    clinica: 'Consultório Integrado', planos: ['Bradesco Saúde', 'SulAmérica', 'Allianz'], cep: '04530-000',
-    cidade: 'São Paulo', estado: 'SP', preco: 220
-  },
-  {
-    id: 4, nome: 'Dra. Patricia Lima', especialidade: 'Pediatria', conselho: 'CRM-SP 321789',
-    clinica: 'Clínica Saúde Total', planos: ['Unimed', 'Golden Cross'], cep: '01311-000',
-    cidade: 'São Paulo', estado: 'SP', preco: 170
-  },
-  {
-    id: 5, nome: 'Dr. Fernando Neto', especialidade: 'Dermatologia', conselho: 'CRM-SP 456654',
-    clinica: 'Clínica Bella Pele', planos: ['Amil', 'Bradesco Saúde'], cep: '03102-000',
-    cidade: 'São Paulo', estado: 'SP', preco: 250
-  }
-];
+
 
 const TIME_SLOTS = ['08:30', '09:15', '10:00', '10:45', '13:30', '14:15', '15:00', '15:45', '16:30'];
 
@@ -80,11 +55,34 @@ export const ClientScheduling: React.FC = () => {
 
   const fetchProfessionals = async () => {
     setLoading(true);
-    // Simular carregamento com tempo para UI interativa
-    setTimeout(() => {
-      setProfessionals(MOCK_PROFESSIONALS);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/professionals`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      const formatted = Array.isArray(data) ? data.filter((p: any) => p.tipo_profissional === 'medico').map((p: any) => ({
+        id: p.id,
+        nome: p.nome,
+        especialidade: p.especialidade || p.tipo_profissional || 'Clínico Geral',
+        conselho: p.numero_conselho || 'Sem conselho',
+        clinica: 'Clínica Principal', // Simplificado
+        planos: ['Particular'],
+        cep: p.endereco?.match(/CEP: (\d{5}-\d{3})/) ? p.endereco.match(/CEP: (\d{5}-\d{3})/)[1] : '00000-000',
+        cidade: p.endereco ? p.endereco.split(' - ')[0].split(', ').pop() : 'Desconhecida',
+        estado: 'SP',
+        preco: 150,
+        celular: p.celular || ''
+      })) : [];
+      
+      setProfessionals(formatted);
+    } catch (e) {
+      console.error(e);
+      setProfessionals([]);
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   const loadAppointments = () => {
@@ -291,6 +289,7 @@ export const ClientScheduling: React.FC = () => {
                         setBookingModal(prof);
                         setBookingTime('');
                         setBookingSuccess(false);
+                        setBookingPhone(prof.celular || '');
                       }}
                       className="px-4.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-1 cursor-pointer"
                     >

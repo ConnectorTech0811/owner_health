@@ -12,7 +12,9 @@ import {
   Menu,
   X,
   UserCheck,
-  HeartPulse
+  HeartPulse,
+  History, 
+  Settings
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -42,6 +44,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       navigate('/client/dashboard');
     } else if (activeRole === 'company') {
       navigate('/company/dashboard');
+    } else if (activeRole === 'professional') {
+      navigate('/professional/scheduling');
     }
   }, [activeRole, navigate]);
 
@@ -52,6 +56,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       navigate('/client/dashboard');
     } else if (role === 'company') {
       navigate('/company/dashboard');
+    } else if (role === 'professional') {
+      navigate('/professional/scheduling');
     } else {
       navigate('/dashboard');
     }
@@ -86,7 +92,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       { label: 'Empresas / Clínicas', path: '/companies', icon: Building2 },
       { label: 'Profissionais', path: '/professionals', icon: Stethoscope },
       { label: 'Planos de Saúde', path: '/health-plans', icon: ClipboardList },
-      { label: 'Usuários Sistema', path: '/users', icon: UserCheck }
+      { label: 'Usuários Sistema', path: '/users', icon: UserCheck },
+      { label: 'Auditoria', path: '/audit-logs', icon: History },
+      { label: 'Configurações', path: '/settings', icon: Settings }
     );
   } else if (activeRole === 'company') {
     menuItems.push(
@@ -101,7 +109,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     );
   } else if (activeRole === 'professional') {
     menuItems.push(
-      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      { label: 'Dashboard', path: '/professional/dashboard', icon: LayoutDashboard },
       { label: 'Minhas Clínicas', path: '/companies', icon: Building2 },
       { label: 'Planos Atendidos', path: '/health-plans', icon: ClipboardList }
     );

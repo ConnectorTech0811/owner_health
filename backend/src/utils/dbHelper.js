@@ -1,5 +1,29 @@
 // Helper de banco de dados resiliente com fallback em memória (Português)
 const db = require('../../knexfile');
+const { getContext } = require('../middleware/context');
+
+async function logAudit(action_type, table_name, old_values, new_values, record_id = null) {
+  try {
+    if (table_name === 'audit_logs') return; // Evita loop infinito
+    const store = getContext();
+    const user = store ? store.get('user') : null;
+    
+    // Ignorar logs em tabelas temporárias ou que geram muito ruído, se necessário
+    const auditData = {
+      user_id: user ? user.id : null,
+      user_email: user ? (user.email || 'system') : 'system',
+      action_type,
+      table_name,
+      record_id: record_id ? String(record_id) : null,
+      old_values: old_values ? JSON.stringify(old_values) : null,
+      new_values: new_values ? JSON.stringify(new_values) : null,
+    };
+    
+    await db('audit_logs').insert(auditData);
+  } catch (err) {
+    console.error('[Audit Log Error]:', err.message);
+  }
+}
 
 // Armazenamento em memória caso o banco falhe ou não esteja criado
 const memoryDb = {
@@ -118,22 +142,49 @@ async function query(table, action, ...args) {
       }
       return await db(table).select(...args);
     }
+    
     if (action === 'insert') {
-      return await db(table).insert(...args);
+      const result = await db(table).insert(...args);
+      const insertedId = Array.isArray(result) ? result[0] : result;
+      // Dispara auditoria assíncrona
+      logAudit('INSERT', table, null, args[0], insertedId).catch(() => {});
+      return result;
     }
+    
     if (action === 'update') {
       const [filter, data] = args;
-      if (filter && typeof filter === 'object' && !Array.isArray(filter)) {
-        return await db(table).where(filter).update(data);
+      let whereClause = filter;
+      if (!filter || typeof filter !== 'object' || Array.isArray(filter)) {
+        whereClause = { id: filter };
       }
-      return await db(table).where({ id: filter }).update(data);
+      
+      // Captura estado anterior
+      const oldRecords = await db(table).where(whereClause).select();
+      const result = await db(table).where(whereClause).update(data);
+      
+      // Dispara auditoria
+      for (const old of oldRecords) {
+        logAudit('UPDATE', table, old, { ...old, ...data }, old.id).catch(() => {});
+      }
+      return result;
     }
+    
     if (action === 'delete') {
       const [filter] = args;
-      if (filter && typeof filter === 'object' && !Array.isArray(filter)) {
-        return await db(table).where(filter).delete();
+      let whereClause = filter;
+      if (!filter || typeof filter !== 'object' || Array.isArray(filter)) {
+        whereClause = { id: filter };
       }
-      return await db(table).where({ id: filter }).delete();
+      
+      // Captura estado anterior
+      const oldRecords = await db(table).where(whereClause).select();
+      const result = await db(table).where(whereClause).delete();
+      
+      // Dispara auditoria
+      for (const old of oldRecords) {
+        logAudit('DELETE', table, old, null, old.id).catch(() => {});
+      }
+      return result;
     }
   } catch (error) {
     // Fallback em memória

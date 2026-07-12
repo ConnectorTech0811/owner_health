@@ -10,6 +10,8 @@ export const CompanyPlans: React.FC = () => {
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
+  const [healthPlans, setHealthPlans] = useState<any[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
 
   const [cardForm, setCardForm] = useState({
     number: '',
@@ -23,7 +25,23 @@ export const CompanyPlans: React.FC = () => {
 
   useEffect(() => {
     fetchCompanyPlan();
+    fetchHealthPlans();
   }, [token, companyId]);
+
+  const fetchHealthPlans = async () => {
+    setLoadingPlans(true);
+    try {
+      const res = await fetch(`${API_URL}/api/health-plans`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setHealthPlans(Array.isArray(data) ? data : []);
+    } catch {
+      setHealthPlans([]);
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
 
   const fetchCompanyPlan = async () => {
     setLoading(true);
@@ -92,7 +110,7 @@ export const CompanyPlans: React.FC = () => {
       <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">Licenciamento de Uso</span>
-          <h3 className="text-xl font-black text-slate-800 mt-1">Plano Empresa Premium</h3>
+          <h3 className="text-xl font-black text-slate-800 mt-1">Plano Master Gold</h3>
           <p className="text-xs text-slate-500 font-semibold mt-1">Sua clínica está registrada sob a licença corporativa de gestão integrada.</p>
         </div>
 
@@ -123,6 +141,43 @@ export const CompanyPlans: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Planos de Saúde Credenciados */}
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-lg font-black text-slate-800">Convênios e Planos de Saúde</h3>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">Planos de saúde credenciados pela clínica. Funcionários e pacientes podem consultar cobertura e valores.</p>
+        </div>
+        {loadingPlans ? (
+          <div className="flex items-center justify-center h-24"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-600" /></div>
+        ) : healthPlans.length === 0 ? (
+          <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-8 text-center">
+            <p className="text-xs text-slate-400 font-bold">Nenhum plano cadastrado ainda.</p>
+            <p className="text-[10px] text-slate-400 mt-1">Acesse "Planos de Saúde" no menu para adicionar convênios.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {healthPlans.map((plan: any) => (
+              <div key={plan.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2 hover:border-indigo-300 transition-all">
+                <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">{plan.operadora}</p>
+                <h4 className="text-sm font-black text-slate-800">{plan.plano}</h4>
+                {plan.produto && <p className="text-[10px] font-semibold text-slate-500">{plan.produto}</p>}
+                <div className="pt-2 border-t border-slate-100 space-y-1">
+                  {plan.valor_plano > 0 && (
+                    <p className="text-xs font-bold text-slate-700">Mensalidade: <span className="text-indigo-600">R$ {Number(plan.valor_plano).toFixed(2)}</span></p>
+                  )}
+                  {plan.valor_consulta > 0 && (
+                    <p className="text-xs text-slate-500">Consulta: R$ {Number(plan.valor_consulta).toFixed(2)}</p>
+                  )}
+                  {plan.valor_exame > 0 && (
+                    <p className="text-xs text-slate-500">Exames: R$ {Number(plan.valor_exame).toFixed(2)}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Planos Grid */}
@@ -174,16 +229,19 @@ export const CompanyPlans: React.FC = () => {
             <div>
               <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest block">Licença Avançada</span>
               <h4 className="text-lg font-black text-indigo-600 mt-1 flex items-center gap-1.5">
-                <span>Empresa Premium</span>
+                <span>Plano Master Gold</span>
                 <Sparkles className="w-4.5 h-4.5" />
               </h4>
               <p className="text-xs text-slate-500 font-medium mt-1">Solução profissional para hospitais, clínicas multi-atendimento e centros cirúrgicos.</p>
             </div>
             
-            <div className="flex items-baseline gap-1 text-slate-800">
-              <span className="text-sm font-bold">R$</span>
-              <span className="text-4xl font-black tracking-tight">299</span>
-              <span className="text-xs text-slate-500 font-bold">/mês</span>
+            <div className="flex flex-col text-slate-800">
+              <span className="text-xs text-slate-400 font-bold line-through mb-1">De R$ 270,00</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm font-bold">Por R$</span>
+                <span className="text-4xl font-black tracking-tight">180</span>
+                <span className="text-xs text-slate-500 font-bold">/mês</span>
+              </div>
             </div>
 
             <ul className="space-y-3.5 text-xs font-semibold text-slate-600 border-t border-slate-100 pt-5">
@@ -229,9 +287,9 @@ export const CompanyPlans: React.FC = () => {
               <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
                 <CreditCard className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-black text-slate-800">Checkout Licença Premium</h3>
+              <h3 className="text-lg font-black text-slate-800">Checkout Plano Master Gold</h3>
               <p className="text-[11px] text-slate-400 font-semibold mt-1">
-                Valor recorrente: R$ 299,00/mês
+                Valor recorrente: R$ 180,00/mês
               </p>
             </div>
 

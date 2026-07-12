@@ -174,6 +174,19 @@ const authenticate = async (req, res) => {
       { expiresIn: '8h' }
     );
 
+    // Buscar tipo_profissional se for profissional
+    let tipo_profissional = null;
+    if (roles.includes('professional')) {
+      try {
+        const profs = await dbHelper.query('profissionais', 'select', { email: user.email });
+        if (profs.length > 0) {
+          tipo_profissional = profs[0].tipo_profissional || 'medico';
+        }
+      } catch (e) {
+        tipo_profissional = 'medico';
+      }
+    }
+
     return res.json({
       token,
       user: {
@@ -181,7 +194,8 @@ const authenticate = async (req, res) => {
         name: user.nome || user.email,
         email: user.email,
         roles,
-        profiles
+        profiles,
+        tipo_profissional
       },
     });
   } catch (err) {

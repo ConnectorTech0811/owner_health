@@ -50,6 +50,20 @@ import { CompanyPrescriptions } from './pages/Company/CompanyPrescriptions';
 import { CompanyAnamnesisConfig } from './pages/Company/CompanyAnamnesisConfig';
 import { CompanyPlans } from './pages/Company/CompanyPlans';
 
+// Portal de Profissionais (Médico, Secretário, Administrativo)
+import { ProfessionalLayout } from './components/ProfessionalLayout';
+// Reuse company pages inside the professional portal
+import { CompanyDashboard as ProfDashboard } from './pages/Company/CompanyDashboard';
+import { CompanyScheduling as ProfScheduling } from './pages/Company/CompanyScheduling';
+import { CompanyPatientData as ProfPatients } from './pages/Company/CompanyPatientData';
+import { CompanyPrescriptions as ProfPrescriptions } from './pages/Company/CompanyPrescriptions';
+import { CompanyProfessionals as ProfTeam } from './pages/Company/CompanyProfessionals';
+import { CompanyHealthPlans as ProfHealthPlans } from './pages/Company/CompanyHealthPlans';
+import { CompanyAnamnesisConfig as ProfAnamnesis } from './pages/Company/CompanyAnamnesisConfig';
+import { ProfessionalMyPlan } from './pages/Professional/ProfessionalMyPlan';
+import { AuditLogs } from './pages/Admin/AuditLogs';
+import { AdminSettings } from './pages/Admin/AdminSettings';
+
 function App() {
   return (
     <Router>
@@ -117,6 +131,25 @@ function App() {
           </PrivateRoute>
         } />
 
+        {/* Portal de Profissionais (Médico / Secretário / Administrativo) */}
+        <Route path="/professional/*" element={
+          <PrivateRoute redirectTo="/login">
+            <ProfessionalLayout>
+              <Routes>
+                <Route path="/dashboard" element={<ProfDashboard />} />
+                <Route path="/scheduling" element={<ProfScheduling />} />
+                <Route path="/patients" element={<ProfPatients />} />
+                <Route path="/prescriptions" element={<ProfPrescriptions />} />
+                <Route path="/team" element={<ProfTeam />} />
+                <Route path="/health-plans" element={<ProfHealthPlans />} />
+                <Route path="/anamnesis" element={<ProfAnamnesis />} />
+                <Route path="/my-plan" element={<ProfessionalMyPlan />} />
+                <Route path="*" element={<Navigate to="/professional/scheduling" replace />} />
+              </Routes>
+            </ProfessionalLayout>
+          </PrivateRoute>
+        } />
+
         {/* Rotas Protegidas do Portal Administrativo */}
         <Route path="/*" element={
           <PrivateRoute redirectTo="/login">
@@ -129,6 +162,8 @@ function App() {
                 <Route path="/health-plans" element={<HealthPlanList />} />
                 <Route path="/users" element={<UserList />} />
                 <Route path="/dependents" element={<DependentList />} />
+                <Route path="/audit-logs" element={<AuditLogs />} />
+                <Route path="/settings" element={<AdminSettings />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </Layout>

@@ -1,3 +1,4 @@
+import { isValidCPF, formatCPF, formatCelular } from '../../utils/validators';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -66,6 +67,8 @@ export const RegisterClient: React.FC = () => {
       if (!form.nome || !form.cpf || !form.data_nascimento || !form.email || !form.celular) {
         setError('Preencha todos os campos obrigatórios'); return;
       }
+      if (!isValidCPF(form.cpf)) { setError('CPF inválido'); return; }
+      if (form.celular.length < 14) { setError('Celular inválido'); return; }
       const birth = new Date(form.data_nascimento);
       const today = new Date();
       let age = today.getFullYear() - birth.getFullYear();
@@ -178,7 +181,7 @@ export const RegisterClient: React.FC = () => {
                   icon={<User className="w-4 h-4" />} placeholder="Seu nome completo" colSpan />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <F label="CPF *" id="cpf" value={form.cpf} onChange={v => sf('cpf', v)}
+                <F label="CPF *" id="cpf" value={form.cpf} isValid={form.cpf ? isValidCPF(form.cpf) : null} onChange={v => sf('cpf', formatCPF(v))}
                   icon={<User className="w-4 h-4" />} placeholder="000.000.000-00" />
                 <F label="Data de Nascimento *" id="data_nascimento" type="date" value={form.data_nascimento}
                   onChange={v => sf('data_nascimento', v)} />
@@ -193,7 +196,7 @@ export const RegisterClient: React.FC = () => {
                     <input value={form.cep}
                       onChange={e => handleCepChange(e.target.value)}
                       onBlur={() => fetchCep()} placeholder="00000-000" maxLength={9}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-blue-500 transition" />
+                      className={`w-full border ${form.cep ? (form.logradouro ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : error.includes('CEP') ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-slate-50') : 'border-slate-200 bg-slate-50'} rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-blue-500 transition`} />
                   </div>
                 </div>
                 <div className="md:col-span-2">
@@ -211,7 +214,7 @@ export const RegisterClient: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <F label="E-mail *" id="email" type="email" value={form.email} onChange={v => sf('email', v)}
                   icon={<Mail className="w-4 h-4" />} placeholder="seu@email.com" />
-                <F label="Celular *" id="celular" value={form.celular} onChange={v => sf('celular', v)}
+                <F label="Celular *" id="celular" value={form.celular} isValid={form.celular ? form.celular.length >= 14 : null} onChange={v => sf('celular', formatCelular(v))}
                   icon={<Phone className="w-4 h-4" />} placeholder="(00) 00000-0000" />
               </div>
             </div>
@@ -323,14 +326,18 @@ export const RegisterClient: React.FC = () => {
 interface FProps {
   label: string; id: string; value: string; onChange: (v: string) => void;
   placeholder?: string; type?: string; icon?: React.ReactNode; colSpan?: boolean;
+  isValid?: boolean | null;
 }
-const F: React.FC<FProps> = ({ label, id, value, onChange, placeholder, type = 'text', icon, colSpan }) => (
-  <div className={colSpan ? 'md:col-span-2' : ''}>
-    <label htmlFor={id} className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>
-    <div className="relative">
-      {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
-      <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className={`w-full bg-slate-50 border border-slate-200 rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition`} />
+const F: React.FC<FProps> = ({ label, id, value, onChange, placeholder, type = 'text', icon, colSpan , isValid = null}) => {
+  const borderColor = isValid === true ? 'border-emerald-500 bg-emerald-50 text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500' : isValid === false ? 'border-red-500 bg-red-50 text-red-900 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 bg-slate-50 focus:border-blue-500 focus:ring-blue-500/10';
+  return (
+    <div className={colSpan ? 'md:col-span-2' : ''}>
+      <label htmlFor={id} className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>
+      <div className="relative">
+        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
+        <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+          className={`w-full border ${borderColor} rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:ring-2 transition`} />
+      </div>
     </div>
-  </div>
-);
+  );
+};

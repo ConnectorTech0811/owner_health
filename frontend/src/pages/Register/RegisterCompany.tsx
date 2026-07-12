@@ -1,3 +1,4 @@
+import { isValidCNPJ, formatCNPJ,  } from '../../utils/validators';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -66,6 +67,8 @@ export const RegisterCompany: React.FC = () => {
       if (!form.razao_social || !form.nome_fantasia || !form.cnpj || !form.celular) {
         setError('Preencha todos os campos obrigatórios'); return;
       }
+      if (!isValidCNPJ(form.cnpj)) { setError('CNPJ inválido'); return; }
+      if (form.celular.length < 14) { setError('Telefone/Celular inválido'); return; }
       if (!form.cep || !form.logradouro || !form.numero) {
         setError('Preencha CEP, logradouro e número da instituição'); return;
       }
@@ -178,7 +181,7 @@ export const RegisterCompany: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <F label="Nome Fantasia *" id="nome_fantasia" value={form.nome_fantasia} onChange={v => sf('nome_fantasia', v)}
                   icon={<Building2 className="w-4 h-4" />} placeholder="Nome da Clínica" color="violet" />
-                <F label="CNPJ *" id="cnpj" value={form.cnpj} onChange={v => sf('cnpj', v)}
+                <F label="CNPJ *" id="cnpj" value={form.cnpj} isValid={form.cnpj ? isValidCNPJ(form.cnpj) : null} onChange={v => sf('cnpj', formatCNPJ(v))}
                   icon={<FileText className="w-4 h-4" />} placeholder="00.000.000/0000-00" color="violet" />
               </div>
               
@@ -192,7 +195,7 @@ export const RegisterCompany: React.FC = () => {
                     <input value={form.cep}
                       onChange={e => handleCepChange(e.target.value)}
                       onBlur={() => fetchCep()} placeholder="00000-000" maxLength={9}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition" />
+                      className={`w-full border ${form.cep ? (form.logradouro ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : error.includes('CEP') ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-slate-50') : 'border-slate-200 bg-slate-50'} rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition`} />
                   </div>
                 </div>
                 <div className="md:col-span-2">
@@ -319,9 +322,12 @@ export const RegisterCompany: React.FC = () => {
 // ── Campo auxiliar ────────────────────────────────────────────────────────────
 interface FProps {
   label: string; id: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; type?: string; icon?: React.ReactNode; color?: string; colSpan?: boolean;
+  placeholder?: string; type?: string; icon?: React.ReactNode; colSpan?: boolean;
+  isValid?: boolean | null;
+  color?: string;
 }
-const F: React.FC<FProps> = ({ label, id, value, onChange, placeholder, type = 'text', icon, color = 'blue', colSpan }) => {
+const F: React.FC<FProps> = ({ label, id, value, onChange, placeholder, type = 'text', icon, color = 'blue', colSpan, isValid = null }) => {
+  const borderColor = isValid === true ? 'border-emerald-500 bg-emerald-50 text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500' : isValid === false ? 'border-red-500 bg-red-50 text-red-900 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 bg-slate-50 focus:border-violet-500 focus:ring-violet-500/10';
   const borderFocus = color === 'violet' ? 'focus:border-violet-500 focus:ring-violet-500/10' : 'focus:border-blue-500 focus:ring-blue-500/10';
   return (
     <div className={colSpan ? 'md:col-span-2' : ''}>
@@ -329,7 +335,7 @@ const F: React.FC<FProps> = ({ label, id, value, onChange, placeholder, type = '
       <div className="relative">
         {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
         <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-          className={`w-full bg-slate-50 border border-slate-200 rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none ${borderFocus} focus:ring-2 transition`} />
+          className={`w-full border ${borderColor} rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none ${borderFocus} focus:ring-2 transition`} />
       </div>
     </div>
   );

@@ -74,30 +74,44 @@ export const CompanyLayout: React.FC<CompanyLayoutProps> = ({ children }) => {
     fetchCompanyData();
   }, [location.pathname, user.email, token]);
 
+  
+  const tipo = user.tipo_profissional || '';
+  const isAdmin = tipo === 'admin' || tipo === '';
+  const isAdministrativo = tipo === 'administrativo';
+  const isMedico = tipo === 'medico';
+
+
+  // Booleans de acesso por funcionalidade
+  const canSeeGestao    = isAdmin || isAdministrativo;   // Profissionais + Planos de Saúde
+  const canSeePlataforma = isAdmin;                       // Meu Plano & Licença (só admin master)
+  const canSeePrescricoes = isAdmin || isMedico;          // Receitas & Atestados
+  const canSeeAnamnesis  = isAdmin || isAdministrativo;  // Configurar Anamnese
+  // Todos os perfis veem Painel, Agendas, Pacientes
+
   const menuGroups: MenuGroup[] = [
     {
       title: 'Gestão Clínica',
       items: [
         { label: 'Painel Geral', path: '/company/dashboard', icon: Building2 },
-        { label: 'Profissionais', path: '/company/professionals', icon: Stethoscope },
-        { label: 'Criar Agendas', path: '/company/scheduling', icon: Calendar },
-        { label: 'Planos de Saúde', path: '/company/health-plans', icon: ClipboardList },
+        ...(canSeeGestao ? [{ label: 'Profissionais', path: '/company/professionals', icon: Stethoscope }] : []),
+        { label: 'Agendas', path: '/company/scheduling', icon: Calendar },
+        ...(canSeeGestao ? [{ label: 'Planos de Saúde', path: '/company/health-plans', icon: ClipboardList }] : []),
       ],
     },
     {
       title: 'Atendimento',
       items: [
-        { label: 'Prontuários Pacientes', path: '/company/patient-data', icon: Users },
-        { label: 'Receitas & Atestados', path: '/company/prescriptions', icon: ClipboardList },
-        { label: 'Configurar Anamnese', path: '/company/anamnesis-config', icon: ClipboardList },
+        { label: 'Pacientes / Clientes', path: '/company/patient-data', icon: Users },
+        ...(canSeePrescricoes ? [{ label: 'Receitas & Atestados', path: '/company/prescriptions', icon: ClipboardList }] : []),
+        ...(canSeeAnamnesis ? [{ label: 'Configurar Anamnese', path: '/company/anamnesis-config', icon: ClipboardList }] : []),
       ],
     },
-    {
+    ...(canSeePlataforma ? [{
       title: 'Plataforma',
       items: [
         { label: 'Meu Plano & Licença', path: '/company/plans', icon: Sparkles },
       ],
-    },
+    }] : []),
   ];
 
   const NavItem = ({ item, onClick }: { item: MenuItem; onClick?: () => void }) => {

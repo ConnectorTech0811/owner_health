@@ -10,17 +10,20 @@ const getHealthPlans = async (req, res) => {
 };
 
 const createHealthPlan = async (req, res) => {
-  const { operadora, plano, produto } = req.body;
+  const { operadora, plano, produto, valor_consulta, valor_exame, valor_plano } = req.body;
 
-  if (!operadora || !plano || !produto) {
-    return res.status(400).json({ error: 'Operadora, nome do plano e nome do produto são obrigatórios' });
+  if (!operadora || !plano) {
+    return res.status(400).json({ error: 'Operadora e nome do plano são obrigatórios' });
   }
 
   try {
     const [insertedId] = await dbHelper.query('planos_saude', 'insert', {
       operadora,
       plano,
-      produto
+      produto,
+      valor_consulta: valor_consulta || 0,
+      valor_exame: valor_exame || 0,
+      valor_plano: valor_plano || 0
     });
 
     return res.status(201).json({

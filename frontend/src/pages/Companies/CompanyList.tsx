@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, CreditCard, Plus, X, User, Mail, Lock, Phone, Save } from 'lucide-react';
+import { Building2, CreditCard, Plus, X, User, Mail, Lock, Phone, Save, Eye as EyeIcon } from 'lucide-react';
 import { API_URL } from '../../config';
 
 export const CompanyList: React.FC = () => {
@@ -9,6 +9,7 @@ export const CompanyList: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
+  const [viewingCompany, setViewingCompany] = useState<any>(null);
 
   const token = localStorage.getItem('token');
 
@@ -146,7 +147,7 @@ export const CompanyList: React.FC = () => {
                 <th className="p-4">CNPJ</th>
                 <th className="p-4">Responsável</th>
                 <th className="p-4">Status Licença</th>
-                <th className="p-4 text-center">Ações Admin</th>
+                <th className="p-4 text-right">Ações Admin</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold">
@@ -170,19 +171,119 @@ export const CompanyList: React.FC = () => {
                       {company.pago ? 'Pago' : 'Pendente'}
                     </span>
                   </td>
-                  <td className="p-4 text-center">
-                    <button
-                      onClick={() => handleTogglePayment(company.id, company.pago)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-primary-50 hover:text-primary-600 rounded-lg border border-slate-200 hover:border-primary-100 text-slate-500 font-bold transition-all cursor-pointer"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>{company.pago ? 'Marcar Pendente' : 'Marcar Pago'}</span>
-                    </button>
+                  <td className="p-4 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleTogglePayment(company.id, company.pago)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-primary-50 hover:text-primary-600 rounded-lg border border-slate-200 hover:border-primary-100 text-slate-500 font-bold transition-all cursor-pointer"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>{company.pago ? 'Marcar Pendente' : 'Marcar Pago'}</span>
+                      </button>
+                      <button
+                        onClick={() => setViewingCompany(company)}
+                        className="p-1.5 bg-slate-100 hover:bg-indigo-100 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                        title="Visualizar Dados"
+                      >
+                        <EyeIcon className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal Visualizar Empresa */}
+      {viewingCompany && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setViewingCompany(null)} />
+          <div className="bg-white rounded-3xl w-full max-w-3xl p-6 md:p-8 relative z-10 max-h-[90vh] overflow-y-auto shadow-2xl animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <Building2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-800">Dados da Instituição</h3>
+                  <p className="text-sm font-semibold text-slate-500">Visualização de perfil</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingCompany(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Dados da Empresa</h4>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Razão Social</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingCompany.razao_social}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Nome Fantasia</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingCompany.nome_fantasia}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">CNPJ</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingCompany.cnpj}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Contato & Endereço</h4>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">E-mail</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingCompany.email || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Telefone / Celular</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingCompany.celular || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Endereço Completo</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingCompany.endereco || 'Não informado'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 md:col-span-2">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Responsável Técnico / Legal</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Nome do Responsável</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingCompany.nome_responsavel}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">CPF do Responsável</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingCompany.cpf_responsavel}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Cargo / Função</p>
+                    <p className="text-sm font-bold text-slate-800">{viewingCompany.cargo_responsavel}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end pt-6 mt-6 border-t border-slate-100">
+              <button
+                onClick={() => setViewingCompany(null)}
+                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-bold text-slate-600 transition-colors cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

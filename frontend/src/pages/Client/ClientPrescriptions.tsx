@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pill, Trash2, Download, X, Loader2, Upload, FileText } from 'lucide-react';
+import { Plus, Pill, Trash2, Download, X, Loader2, Upload, FileText, Edit, Eye, Minus } from 'lucide-react';
 import { API_URL } from '../../config';
 
 interface Prescription {
@@ -13,6 +13,8 @@ export const ClientPrescriptions: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [viewingFile, setViewingFile] = useState<{url: string, type: string} | null>(null);
 
   // AI OCR simulator states
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -22,7 +24,8 @@ export const ClientPrescriptions: React.FC = () => {
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  const [form, setForm] = useState({ medico: '', data: new Date().toISOString().split('T')[0], observacoes: '', medicamentos: '', arquivo_url: '' });
+  const [form, setForm] = useState({ medico: '', data: new Date().toISOString().split('T')[0], observacoes: '', arquivo_url: '' });
+  const [medicamentosList, setMedicamentosList] = useState<string[]>(['']);
 
   useEffect(() => { fetchList(); }, []);
 
@@ -49,22 +52,22 @@ export const ClientPrescriptions: React.FC = () => {
       setTimeout(() => {
         const fileLower = file.name.toLowerCase();
         let doctor = 'Dra. Julia Alencar';
-        let medList = '1. Dipirona 500mg - Tomar 1 comprimido de 6 em 6 horas se houver dor ou febre.\n2. Amoxicilina 500mg - Tomar 1 cápsula a cada 8 horas por 7 dias.';
+        let medList = ['Dipirona 500mg - Tomar 1 comprimido de 6/6h se houver dor ou febre.', 'Amoxicilina 500mg - Tomar 1 cápsula a cada 8 horas por 7 dias.'];
         let ocrText = "RECEITUÁRIO MÉDICO\n--------------------------------\nEMITENTE: DRA. JULIA ALENCAR (CRM-SP 654321)\nPACIENTE: Beneficiário Owner Health\n\nPRESCRIÇÃO:\n- Dipirona 500mg (12 comprimidos)\n  Uso oral. 1 comp de 6/6h se dor/febre.\n\n- Amoxicilina 500mg (21 cápsulas)\n  Uso oral. 1 cap de 8/8h por 7 dias (Uso contínuo).";
 
-        if (fileLower.includes('pressão') || fileLower.includes('losartana')) {
+        if (fileLower.includes('pressão') || fileLower.includes('pressao') || fileLower.includes('losartana')) {
           doctor = 'Dr. Roberto Santos';
-          medList = '1. Losartana Potássica 50mg - Tomar 1 comprimido em jejum pela manhã.';
+          medList = ['Losartana Potássica 50mg - Tomar 1 comprimido em jejum pela manhã.'];
           ocrText = "RECEITUÁRIO MÉDICO\n--------------------------------\nEMITENTE: DR. ROBERTO SANTOS (CRM-SP 123456)\nPACIENTE: Beneficiário Owner Health\n\nPRESCRIÇÃO:\n- Losartana Potássica 50mg (30 comprimidos)\n  Uso oral. Tomar 1 comprimido ao dia pela manhã, em jejum.";
         }
 
         setForm(f => ({
           ...f,
           medico: doctor,
-          medicamentos: medList,
-          observacoes: '[OCR IA] Receituário lido com sucesso pela Inteligência Artificial.',
+          observacoes: '',
           arquivo_url: reader.result as string
         }));
+        setMedicamentosList(medList);
 
         setExtractedOcrText(ocrText);
         setOcrLoading(false);
@@ -77,12 +80,18 @@ export const ClientPrescriptions: React.FC = () => {
     if (!form.data) { setError('Data é obrigatória'); return; }
     setSaving(true); setError('');
     try {
-      const res = await fetch(`${API_URL}/api/prescriptions/client/${clienteId}`, {
-        method: 'POST', headers, body: JSON.stringify(form),
+      const payload = { ...form, medicamentos: JSON.stringify(medicamentosList.filter(m => m.trim() !== '')) };
+      const url = editingId 
+        ? `${API_URL}/api/prescriptions/${editingId}`
+        : `${API_URL}/api/prescriptions/client/${clienteId}`;
+      const res = await fetch(url, {
+        method: editingId ? 'PUT' : 'POST', headers, body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Erro ao salvar');
       setShowModal(false);
-      setForm({ medico: '', data: new Date().toISOString().split('T')[0], observacoes: '', medicamentos: '', arquivo_url: '' });
+      setEditingId(null);
+      setForm({ medico: '', data: new Date().toISOString().split('T')[0], observacoes: '', arquivo_url: '' });
+      setMedicamentosList(['']);
       setExtractedOcrText('');
       fetchList();
     } catch (e: unknown) {
@@ -104,7 +113,9 @@ export const ClientPrescriptions: React.FC = () => {
           <p className="text-sm text-slate-500 mt-1 font-medium">Cadastre e arquive suas receitas médicas. A IA pode ler o arquivo e digitar os medicamentos para você.</p>
         </div>
         <button onClick={() => {
-          setForm({ medico: '', data: new Date().toISOString().split('T')[0], observacoes: '', medicamentos: '', arquivo_url: '' });
+          setForm({ medico: '', data: new Date().toISOString().split('T')[0], observacoes: '', arquivo_url: '' });
+          setMedicamentosList(['']);
+          setEditingId(null);
           setExtractedOcrText('');
           setShowModal(true);
         }} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5"
@@ -135,18 +146,46 @@ export const ClientPrescriptions: React.FC = () => {
                   <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
                     <Pill className="w-5 h-5 text-indigo-600" />
                   </div>
-                  <button onClick={() => handleDelete(item.id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button onClick={() => {
+                      let parsed = [];
+                      try { parsed = JSON.parse(item.medicamentos || '[]'); } 
+                      catch { parsed = (item.medicamentos || '').split('\n').filter(Boolean); }
+                      if (parsed.length === 0) parsed = [''];
+                      
+                      setForm({ medico: item.medico || '', data: item.data.split('T')[0], observacoes: item.observacoes || '', arquivo_url: item.arquivo_url || '' });
+                      setMedicamentosList(parsed);
+                      setEditingId(item.id);
+                      setShowModal(true);
+                    }} className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 <p className="font-black text-slate-800 text-sm mb-1">
                   {new Date(item.data).toLocaleDateString('pt-BR')}
                 </p>
                 {item.medico && <p className="text-xs text-slate-500 font-medium">Dr(a). {item.medico}</p>}
                 {item.medicamentos && (
-                  <div className="mt-2.5 bg-indigo-50/50 rounded-xl p-3 border border-indigo-100/40">
+                  <div className="mt-2.5 space-y-1.5">
                     <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">Medicamentos Extraídos</p>
-                    <p className="text-xs text-slate-700 font-semibold leading-relaxed whitespace-pre-line">{item.medicamentos}</p>
+                    {(() => {
+                      let parsed = [];
+                      try {
+                        parsed = JSON.parse(item.medicamentos);
+                      } catch {
+                        parsed = item.medicamentos.split('\n').filter(Boolean);
+                      }
+                      return Array.isArray(parsed) ? parsed.map((m, i) => (
+                        <div key={i} className="bg-indigo-50/50 rounded-lg p-2 border border-indigo-100/40 text-xs text-slate-700 font-semibold flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1 shrink-0" />
+                          <span>{m}</span>
+                        </div>
+                      )) : null;
+                    })()}
                   </div>
                 )}
                 {item.observacoes && <p className="text-[11px] text-slate-400 mt-3 font-medium italic">{item.observacoes}</p>}
@@ -155,9 +194,20 @@ export const ClientPrescriptions: React.FC = () => {
               {item.arquivo_url && (
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">Receita Anexada</span>
-                  <a href={item.arquivo_url} download="receita.png" className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:underline">
-                    <Download className="w-3.5 h-3.5" /> Baixar
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        const isPdf = item.arquivo_url?.startsWith('data:application/pdf');
+                        setViewingFile({ url: item.arquivo_url!, type: isPdf ? 'pdf' : 'image' });
+                      }}
+                      className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-700 transition"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Ver
+                    </button>
+                    <a href={item.arquivo_url} download={`receita${item.arquivo_url?.startsWith('data:application/pdf') ? '.pdf' : '.png'}`} className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:underline">
+                      <Download className="w-3.5 h-3.5" /> Baixar
+                    </a>
+                  </div>
                 </div>
               )}
             </div>
@@ -214,10 +264,30 @@ export const ClientPrescriptions: React.FC = () => {
                     placeholder="Dr(a). Nome" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition" />
                 </div>
                 
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Medicamentos Prescritos</label>
-                  <textarea value={form.medicamentos} onChange={e => setForm(f => ({ ...f, medicamentos: e.target.value }))}
-                    rows={3} placeholder="Liste os medicamentos prescritos..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition resize-none" />
+                <div className="col-span-2 space-y-2">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-xs font-bold text-slate-600">Medicamentos Prescritos (Linhas independentes)</label>
+                    <button onClick={() => setMedicamentosList([...medicamentosList, ''])} className="text-[10px] font-bold text-blue-600 hover:underline">+ Adicionar Medicamento</button>
+                  </div>
+                  {medicamentosList.map((med, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input 
+                        value={med} 
+                        onChange={e => {
+                          const newList = [...medicamentosList];
+                          newList[index] = e.target.value;
+                          setMedicamentosList(newList);
+                        }}
+                        placeholder="Ex: Dipirona 500mg - 1 comp 6/6h" 
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition" 
+                      />
+                      {medicamentosList.length > 1 && (
+                        <button onClick={() => setMedicamentosList(medicamentosList.filter((_, i) => i !== index))} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-xl transition">
+                          <Minus className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
                 
                 <div className="col-span-2">
@@ -233,6 +303,25 @@ export const ClientPrescriptions: React.FC = () => {
                 style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
                 {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><FileText className="w-4 h-4" /> Salvar Receita</>}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+    
+      {/* Viewer Modal */}
+      {viewingFile && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden animate-fadeIn">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-600"/> Visualizador de Documento</h3>
+              <button onClick={() => setViewingFile(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 bg-slate-100 p-4 overflow-auto flex items-center justify-center">
+              {viewingFile.type === 'pdf' ? (
+                <iframe src={viewingFile.url} className="w-full h-full rounded-xl border border-slate-200" title="PDF Viewer" />
+              ) : (
+                <img src={viewingFile.url} alt="Documento" className="max-w-full max-h-full object-contain rounded-xl shadow-sm" />
+              )}
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instala apenas dependências de produção para otimização
-RUN npm install --only=production
+RUN npm install --omit=dev
 
 # Copia o código da aplicação
 COPY . .

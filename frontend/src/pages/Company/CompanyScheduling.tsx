@@ -22,6 +22,9 @@ export const CompanyScheduling: React.FC = () => {
   const [success, setSuccess] = useState('');
 
   const token = localStorage.getItem('token');
+  const userRaw = localStorage.getItem('user');
+  const user = userRaw ? JSON.parse(userRaw) : { tipo_profissional: 'admin' };
+  const isAdmin = user.tipo_profissional !== 'medico';
   const companyId = localStorage.getItem('companyId') || '1';
 
   useEffect(() => {
@@ -129,7 +132,7 @@ export const CompanyScheduling: React.FC = () => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
       
       {/* Formulário de Criação de Agenda */}
-      <div className="lg:col-span-1 space-y-6">
+      {isAdmin && (<div className="lg:col-span-1 space-y-6">
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div>
             <h3 className="text-md font-bold text-slate-800 flex items-center gap-2">
@@ -234,10 +237,9 @@ export const CompanyScheduling: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
-
+      </div>)}
       {/* Escalas Ativas */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className={`${isAdmin ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-6`}>
         <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
           <div>
             <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">

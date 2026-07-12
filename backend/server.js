@@ -17,6 +17,9 @@ const medicationRoutes = require('./src/routes/medications');
 const bioimpedanceRoutes = require('./src/routes/bioimpedance');
 const anamnesisRoutes = require('./src/routes/anamnesis');
 const satisfactionRoutes = require('./src/routes/satisfaction');
+const auditLogsRoutes = require('./src/routes/auditLogs');
+
+const { contextMiddleware } = require('./src/middleware/context');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,6 +28,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(contextMiddleware);
 
 // Rotas principais
 app.use('/api/auth', authRoutes);
@@ -42,6 +46,7 @@ app.use('/api/medications', medicationRoutes);
 app.use('/api/bioimpedance', bioimpedanceRoutes);
 app.use('/api/anamnesis', anamnesisRoutes);
 app.use('/api/satisfaction', satisfactionRoutes);
+app.use('/api/audit-logs', auditLogsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

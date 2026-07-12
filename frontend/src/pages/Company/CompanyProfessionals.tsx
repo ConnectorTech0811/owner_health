@@ -1,3 +1,4 @@
+import { isValidCPF } from '../../utils/validators';
 import React, { useState, useEffect } from 'react';
 import {
   Users, MapPin, Mail, Phone, Lock, Eye, EyeOff,
@@ -204,7 +205,27 @@ export const CompanyProfessionals: React.FC = () => {
       return;
     }
 
+    
+    if (!isValidCPF(form.cpf)) {
+      setError('CPF inválido. Deve conter 11 dígitos.');
+      return;
+    }
+    if (form.celular.replace(/\D/g, '').length < 10) {
+      setError('Celular inválido.');
+      return;
+    }
+    if (form.cep && form.cep.replace(/\D/g, '').length !== 8) {
+      setError('CEP inválido.');
+      return;
+    }
+    
+    if (!form.cep || !form.logradouro || !form.numero || !form.bairro || !form.cidade || !form.estado) {
+      setError('Preencha todos os campos do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF).');
+      return;
+    }
+
     setSubmitLoading(true);
+
     try {
       const address = `${form.logradouro}, ${form.numero}${form.complemento ? ' - ' + form.complemento : ''}${form.bairro ? ', ' + form.bairro : ''}${form.cidade ? ', ' + form.cidade : ''} - ${form.estado}, CEP: ${form.cep}`;
       const payload = {
@@ -465,9 +486,9 @@ export const CompanyProfessionals: React.FC = () => {
                   <input
                     type="text" required
                     value={form.cpf}
-                    onChange={e => setForm({...form, cpf: e.target.value})}
+                    onChange={e => setForm({...form, cpf: e.target.value.replace(/\D/g, '').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2').slice(0, 14)})}
                     placeholder="000.000.000-00"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium"
+                    className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2 text-xs font-medium ${form.cpf ? (isValidCPF(form.cpf) ? 'border-emerald-500 text-emerald-700' : 'border-red-500 text-red-700') : 'border-slate-200'}`}
                   />
                 </div>
                 <div>
@@ -510,9 +531,9 @@ export const CompanyProfessionals: React.FC = () => {
                     <input
                       type="text" required
                       value={form.celular}
-                      onChange={e => setForm({...form, celular: e.target.value})}
+                      onChange={e => setForm({...form, celular: e.target.value.replace(/\D/g, '').replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').slice(0, 15)})}
                       placeholder="(00) 00000-0000"
-                      className="w-full bg-slate-50 border border-slate-200 pl-9 pr-3.5 py-2 text-xs font-medium focus:outline-none focus:border-indigo-500"
+                      className={`w-full bg-slate-50 border pl-9 pr-3.5 py-2 text-xs font-medium focus:outline-none ${form.celular ? (form.celular.length >= 14 ? 'border-emerald-500 text-emerald-700' : 'border-red-500 text-red-700') : 'border-slate-200'}`}
                     />
                   </div>
                 </div>
@@ -568,7 +589,7 @@ export const CompanyProfessionals: React.FC = () => {
                       onChange={e => setForm({...form, cep: e.target.value.replace(/\D/g,'')})}
                       onBlur={handleCepBlur}
                       placeholder="00000-000"
-                      className="w-full bg-slate-50 border border-slate-200 pl-9 pr-3.5 py-2 text-xs font-medium focus:outline-none"
+                      className={`w-full bg-slate-50 border pl-9 pr-3.5 py-2 text-xs font-medium focus:outline-none ${form.cep ? (form.logradouro ? 'border-emerald-500 text-emerald-700' : cepError ? 'border-red-500 text-red-700' : 'border-slate-200') : 'border-slate-200'}`}
                     />
                   </div>
                   {cepError && <p className="text-red-500 text-[10px] font-bold mt-1">⚠️ {cepError}</p>}

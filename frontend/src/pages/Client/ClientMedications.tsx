@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pill, Trash2, X, Loader2, Bell, BellOff, Check, AlertCircle, Clock, Calendar, Search, MapPin, History } from 'lucide-react';
+import { Plus, Pill, Trash2, X, Loader2, Bell, BellOff, Check, AlertCircle, Clock, Calendar, Search, MapPin, History, Minus } from 'lucide-react';
 import { API_URL } from '../../config';
 
 interface Medication {
@@ -55,9 +55,10 @@ export const ClientMedications: React.FC = () => {
   const today = new Date().toISOString().split('T')[0];
 
   const [form, setForm] = useState({
-    nome: '', posologia: '', horarios: '', data_inicio: today,
+    nome: '', posologia: '', data_inicio: today,
     data_fim: '', observacoes: '', email_lembrete: '',
   });
+  const [horariosList, setHorariosList] = useState<string[]>(['08:00']);
 
   useEffect(() => {
     fetchMeds();
@@ -88,15 +89,18 @@ export const ClientMedications: React.FC = () => {
 
   const handleSave = async () => {
     if (!form.nome) { setError('Nome é obrigatório'); return; }
+    if (form.data_fim && form.data_fim < form.data_inicio) { setError('A data de término não pode ser anterior à data de início.'); return; }
+    if (form.email_lembrete && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(form.email_lembrete)) { setError('E-mail inválido.'); return; }
     setSaving(true); setError('');
     try {
-      const payload = { ...form, horarios: form.horarios.split(',').map(h => h.trim()).filter(Boolean) };
+      const payload = { ...form, horarios: horariosList.filter(h => h.trim() !== '') };
       const res = await fetch(`${API_URL}/api/medications/client/${clienteId}`, {
         method: 'POST', headers, body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Erro ao salvar');
       setShowModal(false);
-      setForm({ nome: '', posologia: '', horarios: '', data_inicio: today, data_fim: '', observacoes: '', email_lembrete: '' });
+      setForm({ nome: '', posologia: '', data_inicio: today, data_fim: '', observacoes: '', email_lembrete: '' });
+      setHorariosList(['08:00']);
       fetchMeds();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erro');
@@ -353,6 +357,7 @@ export const ClientMedications: React.FC = () => {
                           <div>
                             <h3 className="font-black text-slate-800 text-sm">{med.nome}</h3>
                             {med.posologia && <p className="text-xs text-slate-500 font-medium">{med.posologia}</p>}
+                            {med.observacoes && <p className="text-[10px] text-slate-400 font-medium mt-1 italic leading-tight">{med.observacoes}</p>}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -673,6 +678,7 @@ export const ClientMedications: React.FC = () => {
               <h3 className="text-lg font-black text-slate-800">Novo Medicamento</h3>
               <button onClick={() => setShowModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2.5 rounded-lg text-sm font-semibold">{error}</div>}
               <div>
@@ -685,10 +691,25 @@ export const ClientMedications: React.FC = () => {
                 <input value={form.posologia} onChange={e => setForm(f => ({ ...f, posologia: e.target.value }))}
                   placeholder="Ex: 1 comprimido após as refeições" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition" />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Horários (separados por vírgula)</label>
-                <input value={form.horarios} onChange={e => setForm(f => ({ ...f, horarios: e.target.value }))}
-                  placeholder="08:00, 14:00, 20:00" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition" />
+              <div className="space-y-2">
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-xs font-bold text-slate-600">Horários</label>
+                  <button onClick={() => setHorariosList([...horariosList, '08:00'])} className="text-[10px] font-bold text-blue-600 hover:underline">+ Adicionar Horário</button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {horariosList.map((h, i) => (
+                    <div key={i} className="flex items-center gap-1">
+                      <input type="time" value={h} onChange={e => {
+                        const newH = [...horariosList];
+                        newH[i] = e.target.value;
+                        setHorariosList(newH);
+                      }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition" />
+                      {horariosList.length > 1 && (
+                        <button onClick={() => setHorariosList(horariosList.filter((_, idx) => idx !== i))} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg transition"><Minus className="w-4 h-4" /></button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -698,9 +719,21 @@ export const ClientMedications: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5">Término (opcional)</label>
-                  <input type="date" value={form.data_fim} onChange={e => setForm(f => ({ ...f, data_fim: e.target.value }))}
+                  <input type="date" min={form.data_inicio} value={form.data_fim} onChange={e => {
+                    if (e.target.value && e.target.value < form.data_inicio) {
+                      alert('A data de término não pode ser anterior à data de início.');
+                      setForm(f => ({ ...f, data_fim: '' }));
+                    } else {
+                      setForm(f => ({ ...f, data_fim: e.target.value }));
+                    }
+                  }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Observações Adicionais (Livre)</label>
+                <textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
+                  placeholder="Informações, efeitos observados ou detalhes abertos para escrever..." rows={2} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition resize-none" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">E-mail para Lembretes (opcional)</label>
@@ -710,11 +743,12 @@ export const ClientMedications: React.FC = () => {
             </div>
             <div className="p-6 border-t border-slate-100 flex gap-3">
               <button onClick={() => setShowModal(false)} className="flex-1 py-3 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">Cancelar</button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2"
+              <button type="submit" disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
                 {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : 'Salvar'}
               </button>
             </div>
+            </form>
           </div>
         </div>
       )}

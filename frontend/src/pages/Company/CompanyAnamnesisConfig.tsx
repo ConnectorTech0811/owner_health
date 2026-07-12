@@ -93,7 +93,7 @@ export const CompanyAnamnesisConfig: React.FC = () => {
   };
 
   const handleCopyLink = () => {
-    const inviteLink = `http://localhost/client/anamnesis`;
+    const inviteLink = `https://owner-health-ktsf.vercel.app/client/anamnesis`;
     navigator.clipboard.writeText(inviteLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -108,17 +108,25 @@ export const CompanyAnamnesisConfig: React.FC = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn">
+
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-black text-slate-800">Personalizar Pré-Consulta</h1>
+        <p className="text-sm text-slate-500 mt-1 font-medium">Configure os campos do formulário de anamnese que seus pacientes preencherão antes das consultas.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Configuração da Ficha */}
       <div className="lg:col-span-2 space-y-6">
         <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
           <div>
             <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
               <ClipboardList className="w-5.5 h-5.5 text-indigo-600" />
-              <span>Personalizar Sistema de Pré-Consulta</span>
+              <span>Campos Ativos da Ficha</span>
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Habilite ou desabilite as seções e perguntas do formulário de anamnese que os pacientes preencherão.
+              Habilite ou desabilite as seções visíveis no formulário de pré-consulta dos pacientes.
             </p>
           </div>
 
@@ -182,7 +190,7 @@ export const CompanyAnamnesisConfig: React.FC = () => {
           <div className="bg-slate-50 border border-slate-150 rounded-xl p-4 flex flex-col gap-3">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Link de Pré-Consulta</span>
             <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex items-center justify-between font-mono text-[10px] text-slate-600 truncate select-all">
-              <span>http://localhost/client/anamnesis</span>
+              <span>https://owner-health-ktsf.vercel.app/client/anamnesis</span>
             </div>
             
             <button
@@ -213,6 +221,7 @@ export const CompanyAnamnesisConfig: React.FC = () => {
             </p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

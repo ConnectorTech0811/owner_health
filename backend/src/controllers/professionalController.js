@@ -291,13 +291,37 @@ const unlinkFromCompany = async (req, res) => {
   const { companyId } = req.query;
 
   try {
+    // 1. Remover o vínculo específico
     await dbHelper.query('profissional_empresas', 'delete', {
       profissional_id: parseInt(id),
       empresa_id: parseInt(companyId)
     });
-    return res.json({ message: 'Vínculo profissional removido com sucesso!' });
+
+    // 2. Checar se o profissional ainda tem vínculos com outras empresas
+    const remainingLinks = await dbHelper.query('profissional_empresas', 'select', {
+      profissional_id: parseInt(id)
+    });
+
+    if (remainingLinks.length === 0) {
+      // Se não tem mais vínculos, podemos apagar o profissional e seu usuário
+      const profs = await dbHelper.query('profissionais', 'select', { id: parseInt(id) });
+      if (profs.length > 0) {
+        const prof = profs[0];
+        // Remover dependências em outras tabelas (ex: planos de saúde do prof)
+        await dbHelper.query('profissional_planos_saude', 'delete', { profissional_id: parseInt(id) });
+        // Remover o profissional
+        await dbHelper.query('profissionais', 'delete', parseInt(id));
+        // Remover o usuário correspondente
+        if (prof.usuario_id) {
+          await dbHelper.query('usuarios', 'delete', prof.usuario_id);
+        }
+      }
+    }
+
+    return res.json({ message: 'Profissional removido com sucesso!' });
   } catch (err) {
-    return res.status(500).json({ error: 'Erro ao desvincular profissional' });
+    console.error(err);
+    return res.status(500).json({ error: 'Erro ao remover profissional' });
   }
 };
 

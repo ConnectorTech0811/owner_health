@@ -43,4 +43,19 @@ const deletePrescription = async (req, res) => {
   }
 };
 
-module.exports = { getPrescriptions, createPrescription, deletePrescription };
+const updatePrescription = async (req, res) => {
+  const { id } = req.params;
+  const data = req.body;
+  try {
+    try {
+      await db('receitas').where({ id }).update(data);
+    } catch {
+      await dbHelper.query('receitas', 'update', { id, ...data });
+    }
+    return res.json({ message: 'Receita atualizada' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro ao atualizar receita' });
+  }
+};
+
+module.exports = { getPrescriptions, createPrescription, updatePrescription, deletePrescription };
