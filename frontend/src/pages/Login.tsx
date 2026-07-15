@@ -50,6 +50,14 @@ export const Login = () => {
       const primaryRole = roles[0] || 'client';
       localStorage.setItem('activeRole', primaryRole);
 
+      // Salva dados do profissional (médico, secretário, etc.)
+      if (data.user.empresa_id) {
+        localStorage.setItem('companyId', String(data.user.empresa_id));
+      }
+      if (data.user.profissional_id) {
+        localStorage.setItem('profissionalId', String(data.user.profissional_id));
+      }
+
       if (primaryRole === 'client' || primaryRole === 'dependent') {
         const profiles = data.user.profiles || [];
         if (profiles.length > 1) {
@@ -64,6 +72,10 @@ export const Login = () => {
         } else {
           navigate('/client/dashboard');
         }
+      } else if (primaryRole === 'professional') {
+        navigate('/professional/scheduling');
+      } else if (primaryRole === 'company') {
+        navigate('/company/dashboard');
       } else {
         navigate('/dashboard');
       }

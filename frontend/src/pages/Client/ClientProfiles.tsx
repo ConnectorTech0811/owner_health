@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, HeartPulse } from 'lucide-react';
 
 interface Profile {
@@ -11,6 +11,7 @@ interface Profile {
 
 export const ClientProfiles: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
@@ -28,7 +29,9 @@ export const ClientProfiles: React.FC = () => {
     localStorage.setItem('activeProfileName', profile.nome);
     localStorage.setItem('activeProfileRole', profile.role);
     localStorage.setItem('activeRole', profile.role === 'client' ? 'client' : 'dependent');
-    navigate('/client/dashboard');
+    
+    const from = location.state?.from || '/client/dashboard';
+    navigate(from);
   };
 
   const handleExit = () => {

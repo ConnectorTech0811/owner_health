@@ -24,8 +24,10 @@ export const CompanyScheduling: React.FC = () => {
   const token = localStorage.getItem('token');
   const userRaw = localStorage.getItem('user');
   const user = userRaw ? JSON.parse(userRaw) : { tipo_profissional: 'admin' };
-  const isAdmin = user.tipo_profissional !== 'medico';
+  const isMedico = user.tipo_profissional === 'medico';
+  const isAdmin = !isMedico;
   const companyId = localStorage.getItem('companyId') || '1';
+  const profissionalId = localStorage.getItem('profissionalId');
 
   useEffect(() => {
     fetchData();
@@ -44,7 +46,12 @@ export const CompanyScheduling: React.FC = () => {
         const schedulesData = await resS.json();
         const profsData = await resP.json();
 
-        setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
+        let allSchedules = Array.isArray(schedulesData) ? schedulesData : [];
+        // Se for médico, mostra apenas as escalas dele
+        if (isMedico && profissionalId) {
+          allSchedules = allSchedules.filter((s: any) => String(s.profissional_id) === String(profissionalId));
+        }
+        setSchedules(allSchedules);
         setProfessionals(Array.isArray(profsData) ? profsData.filter((p: any) => p.tipo_profissional === 'medico') : []);
       }
     } catch (err) {
@@ -244,17 +251,21 @@ export const CompanyScheduling: React.FC = () => {
           <div>
             <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
               <Calendar className="w-5.5 h-5.5 text-indigo-600" />
-              <span>Escalas e Agendas Registradas</span>
+              <span>{isMedico ? 'Minha Agenda de Atendimentos' : 'Escalas e Agendas Registradas'}</span>
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Todos os horários criados para atendimento clínico na instituição.
+              {isMedico
+                ? 'Seus horários de atendimento agendados na clínica.'
+                : 'Todos os horários criados para atendimento clínico na instituição.'}
             </p>
           </div>
 
           {schedules.length === 0 ? (
             <div className="border border-dashed border-slate-150 p-10 text-center rounded-2xl">
               <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-              <p className="text-xs text-slate-400 font-bold">Nenhum horário de escala criado nesta clínica.</p>
+              <p className="text-xs text-slate-400 font-bold">
+                {isMedico ? 'Nenhum horário de atendimento agendado para você.' : 'Nenhum horário de escala criado nesta clínica.'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

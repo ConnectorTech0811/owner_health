@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Lock, Mail, Eye, EyeOff, Loader2, HeartPulse, Check } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import loginBg from '../../assets/login_bg.png';
 import { API_URL } from '../../config';
 
 export const ClientLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,7 +59,7 @@ export const ClientLogin = () => {
       
       if (profiles.length > 1) {
         // Redireciona para o seletor de perfis estilo streaming
-        navigate('/client/profiles');
+        navigate('/client/profiles', { state: { from: location.state?.from } });
       } else if (profiles.length === 1) {
         // Apenas um perfil (o titular), entra direto
         const singleProfile = profiles[0];
@@ -66,7 +67,9 @@ export const ClientLogin = () => {
         localStorage.setItem('activeProfileName', singleProfile.nome);
         localStorage.setItem('activeProfileRole', singleProfile.role);
         localStorage.setItem('activeRole', 'client'); // Padrão
-        navigate('/client/dashboard');
+        
+        const from = location.state?.from || '/client/dashboard';
+        navigate(from);
       } else {
         throw new Error('Nenhum perfil ativo associado a esta conta.');
       }

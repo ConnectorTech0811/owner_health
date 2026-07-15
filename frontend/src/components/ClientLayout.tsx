@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   CreditCard, User, Users, LogOut, Menu, X, HeartPulse, RefreshCw,
-  FlaskConical, Pill, Scale, Activity, ClipboardList, Star, Crown, Shield, Calendar
+  FlaskConical, Pill, Scale, Activity, ClipboardList, Star, Crown, Shield, Calendar,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { API_URL } from '../config';
+import { ProfileModal } from './ProfileModal';
 
 interface ClientLayoutProps { children: React.ReactNode; }
 
@@ -15,6 +17,8 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [planoPlataforma, setPlanoPlataforma] = useState('free');
 
   const activeProfileId = localStorage.getItem('activeProfileId');
@@ -109,7 +113,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
 
   const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
     <>
-      <nav className="flex-1 px-4 py-4 space-y-5 overflow-y-auto">
+      <nav className="flex-1 min-h-0 px-4 py-4 space-y-5 overflow-y-auto">
         {menuGroups.map((group) => (
           <div key={group.title}>
             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-4 mb-2">{group.title}</p>
@@ -120,18 +124,18 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col gap-2">
-        <div className="flex items-center gap-3 px-2 py-1.5 bg-slate-900/40 rounded-lg border border-slate-800/60 mb-1">
+      <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col gap-2 shrink-0">
+        <button onClick={() => setProfileOpen(true)} className="w-full flex items-center gap-3 px-2 py-1.5 bg-slate-900/40 hover:bg-slate-800 transition rounded-lg border border-slate-800/60 mb-1 text-left cursor-pointer">
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-black text-white shrink-0">
             {(activeProfileName[0] || 'U').toUpperCase()}
           </div>
-          <div className="truncate">
+          <div className="truncate flex-1">
             <p className="text-xs font-bold text-slate-200 truncate">{activeProfileName}</p>
             <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mt-0.5 animate-pulse">
               {activeProfileRole === 'client' ? 'Titular' : 'Dependente'} • {planoPlataforma.toUpperCase()}
             </p>
           </div>
-        </div>
+        </button>
 
         <button onClick={handleSwitchProfile}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all text-left cursor-pointer">
@@ -146,60 +150,72 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row font-sans">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-slate-300 border-r border-slate-800 shrink-0">
-        <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-800 bg-slate-950">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-600">
-            <HeartPulse className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-black text-white tracking-wide text-md">Owner Health</span>
-        </div>
-        <SidebarContent />
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shadow-sm">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-            <h1 className="text-md md:text-lg font-black text-slate-800 tracking-tight">Portal do Beneficiário</h1>
-          </div>
-          <div className="hidden md:flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500">Perfil ativo: </span>
-            <span className="text-xs font-black bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full capitalize">
-              {activeProfileName} ({activeProfileRole === 'client' ? 'Titular' : 'Dependente'})
-            </span>
-          </div>
-        </header>
-
-        {/* Mobile Drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 z-40 flex">
-            <div className="fixed inset-0 bg-slate-900/60" onClick={() => setMobileMenuOpen(false)} />
-            <div className="relative flex flex-col w-72 bg-slate-900 text-slate-300 h-full animate-fadeIn">
-              <div className="flex items-center justify-between p-4 border-b border-slate-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                    <HeartPulse className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="font-black text-white text-md">Owner Health</span>
-                </div>
-                <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              <SidebarContent onNavigate={() => setMobileMenuOpen(false)} />
+    <>
+      {profileOpen && <ProfileModal user={JSON.parse(localStorage.getItem('user') || '{}')} onClose={() => setProfileOpen(false)} tipoDisplay={activeProfileRole === 'client' ? 'Titular' : 'Dependente'} />}
+      <div className="h-screen overflow-hidden bg-slate-50 flex flex-col md:flex-row font-sans">
+        {/* Sidebar - Desktop */}
+        <aside className={`hidden md:flex flex-col bg-slate-900 text-slate-300 border-r border-slate-800 shrink-0 transition-all duration-300 ${desktopMenuOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 border-r-0 overflow-hidden'}`}>
+          <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-800 bg-slate-950 whitespace-nowrap">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-600 shrink-0">
+              <HeartPulse className="w-5 h-5 text-white" />
             </div>
+            <span className="font-black text-white tracking-wide text-md">Owner Health</span>
           </div>
-        )}
+          <div className="flex-1 flex flex-col w-64 h-[calc(100vh-4rem)]">
+            <SidebarContent />
+          </div>
+        </aside>
 
-        <main className="flex-1 overflow-auto p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">{children}</div>
-        </main>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col min-w-0 h-full">
+          <header className="h-16 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shadow-sm">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+              <button
+                onClick={() => setDesktopMenuOpen(!desktopMenuOpen)}
+                className="hidden md:flex items-center justify-center w-10 h-10 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-all cursor-pointer active:scale-95"
+                title={desktopMenuOpen ? "Recolher menu" : "Expandir menu"}
+              >
+                {desktopMenuOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+              </button>
+              <h1 className="text-md md:text-lg font-black text-slate-800 tracking-tight">Portal do Beneficiário</h1>
+            </div>
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-500">Perfil ativo: </span>
+              <span className="text-xs font-black bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full capitalize">
+                {activeProfileName} ({activeProfileRole === 'client' ? 'Titular' : 'Dependente'})
+              </span>
+            </div>
+          </header>
+
+          {/* Mobile Drawer */}
+          {mobileMenuOpen && (
+            <div className="md:hidden fixed inset-0 z-40 flex">
+              <div className="fixed inset-0 bg-slate-900/60" onClick={() => setMobileMenuOpen(false)} />
+              <div className="relative flex flex-col w-72 bg-slate-900 text-slate-300 h-full animate-fadeIn">
+                <div className="flex items-center justify-between p-4 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                      <HeartPulse className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="font-black text-white text-md">Owner Health</span>
+                  </div>
+                  <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <SidebarContent onNavigate={() => setMobileMenuOpen(false)} />
+              </div>
+            </div>
+          )}
+
+          <main className="flex-1 overflow-auto p-4 md:p-8 relative">
+            <div className="max-w-7xl mx-auto">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 };

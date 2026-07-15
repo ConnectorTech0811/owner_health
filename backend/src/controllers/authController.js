@@ -174,13 +174,21 @@ const authenticate = async (req, res) => {
       { expiresIn: '8h' }
     );
 
-    // Buscar tipo_profissional se for profissional
+    // Buscar tipo_profissional e empresa_id se for profissional
     let tipo_profissional = null;
+    let profissional_id = null;
+    let empresa_id = null;
     if (roles.includes('professional')) {
       try {
         const profs = await dbHelper.query('profissionais', 'select', { email: user.email });
         if (profs.length > 0) {
           tipo_profissional = profs[0].tipo_profissional || 'medico';
+          profissional_id = profs[0].id;
+          // Busca a empresa vinculada ao profissional
+          try {
+            const vinculo = await dbHelper.query('profissional_empresas', 'select', { profissional_id: profs[0].id });
+            if (vinculo.length > 0) empresa_id = vinculo[0].empresa_id;
+          } catch {}
         }
       } catch (e) {
         tipo_profissional = 'medico';
@@ -195,7 +203,9 @@ const authenticate = async (req, res) => {
         email: user.email,
         roles,
         profiles,
-        tipo_profissional
+        tipo_profissional,
+        profissional_id,
+        empresa_id
       },
     });
   } catch (err) {

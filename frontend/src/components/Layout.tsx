@@ -14,8 +14,11 @@ import {
   UserCheck,
   HeartPulse,
   History, 
-  Settings
+  Settings,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
+import { ProfileModal } from './ProfileModal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,7 +28,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(true);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Obter usuário e perfil ativo do localStorage
   const userRaw = localStorage.getItem('user');
@@ -116,11 +121,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
+    <>
+      {profileOpen && <ProfileModal user={user} onClose={() => setProfileOpen(false)} tipoDisplay={getRoleTitle(activeRole)} />}
+      <div className="h-screen overflow-hidden bg-slate-100 flex flex-col md:flex-row">
       {/* Sidebar Lateral - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-slate-300 border-r border-slate-800 shrink-0">
+      <aside className={`hidden md:flex flex-col bg-slate-900 text-slate-300 border-r border-slate-800 shrink-0 transition-all duration-300 ${desktopMenuOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 border-r-0 overflow-hidden'}`}>
         {/* Sidebar Header */}
-        <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-800 bg-slate-950">
+        <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-800 bg-slate-950 whitespace-nowrap">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary-600">
             <HeartPulse className="w-5 h-5 text-white" />
           </div>
@@ -128,7 +135,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         {/* Sidebar Menu */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 min-h-0 px-4 py-6 space-y-1.5 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -150,16 +157,16 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col gap-2">
-          <div className="flex items-center gap-3 px-2 py-1.5">
-            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
+        <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col gap-2 shrink-0">
+          <button onClick={() => setProfileOpen(true)} className="flex items-center gap-3 px-2 py-1.5 w-full hover:bg-slate-800 transition rounded-lg text-left cursor-pointer">
+            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shrink-0">
               <User className="w-4 h-4 text-slate-400" />
             </div>
-            <div className="truncate">
+            <div className="truncate flex-1">
               <p className="text-xs font-bold text-slate-200 truncate">{user.name}</p>
               <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
             </div>
-          </div>
+          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-500/10 hover:text-red-400 text-slate-400 transition-all text-left"
@@ -171,16 +178,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Header Superior */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shadow-sm">
+        <header className="h-16 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shadow-sm">
           {/* Lado Esquerdo: Toggle Mobile + Título Dinâmico */}
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+              className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+            <button
+              onClick={() => setDesktopMenuOpen(!desktopMenuOpen)}
+              className="hidden md:flex items-center justify-center w-10 h-10 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-all cursor-pointer active:scale-95"
+              title={desktopMenuOpen ? "Recolher menu" : "Expandir menu"}
+            >
+              {desktopMenuOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
             </button>
 
             {/* Título com Seletor se possuir Multi-Role */}
@@ -294,11 +308,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Conteúdo Dinâmico da Rota */}
         <main className="flex-1 overflow-auto p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto animate-fadeIn">
             {children}
           </div>
         </main>
       </div>
     </div>
+    </>
   );
 };
