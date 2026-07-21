@@ -49,35 +49,72 @@ function decodePdfHex(hexStr) {
 
 async function extractPdfText(dataBuffer) {
   let text = '';
+
+  // 1. Tenta pdf-parse com suporte a v1 e v2 (PDFParse class)
   if (pdfParse) {
     try {
-      const pdfData = await pdfParse(dataBuffer);
-      if (pdfData && pdfData.text && pdfData.text.trim().length > 0) {
-        text = pdfData.text.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').trim();
+      if (typeof pdfParse === 'function') {
+        const pdfData = await pdfParse(dataBuffer);
+        if (pdfData && pdfData.text) text = pdfData.text;
+      } else if (pdfParse.PDFParse) {
+        const uint8 = new Uint8Array(dataBuffer);
+        const parser = new pdfParse.PDFParse(uint8);
+        const data = await parser.getText();
+        if (data && data.text) text = data.text;
       }
     } catch (err) {
-      console.warn('pdfParse notice:', err.message);
+      console.warn('pdf-parse notice:', err.message);
     }
   }
 
-  if (!text || text.length < 3) {
+  // Limpa marcadores de página do pdf-parse como '-- 1 of 1 --'
+  if (text) {
+    text = text.replace(/--\s*\d+\s*of\s*\d+\s*--/gi, '')
+              .replace(/\r\n/g, '\n')
+              .replace(/[ \t]+/g, ' ')
+              .trim();
+  }
+
+  // 2. Fallback: Descompacta streams FlateDecode e extrai apenas texto imprimível válido
+  if (!text || text.length < 2) {
     try {
       const bufferStr = dataBuffer.toString('binary');
-      // Match literal text strings (word) Tj or (word) TJ
-      const literalMatches = bufferStr.match(/\\(([^\\(\\)\\\\]{2,100})\\)/g) || [];
-      const cleanedLiterals = literalMatches
-        .map(m => m.slice(1, -1).trim())
-        .filter(s => s.length >= 2 && !s.includes('Font') && !s.includes('Adobe') && !s.includes('Identity') && !s.includes('ProcSet') && !s.includes('Catalog'));
+      const streamRegex = /stream[\r\n]+([\s\S]*?)endstream/g;
+      let match;
+      const foundTexts = [];
 
-      if (cleanedLiterals.length > 0) {
-        text = cleanedLiterals.join(' ');
+      while ((match = streamRegex.exec(bufferStr)) !== null) {
+        const rawStream = Buffer.from(match[1], 'binary');
+        let uncompressed = '';
+        try {
+          uncompressed = zlib.inflateSync(rawStream).toString('utf-8');
+        } catch {
+          continue;
+        }
+
+        if (uncompressed) {
+          const literalMatches = uncompressed.match(/\(([^()]{2,100})\)/g) || [];
+          for (const m of literalMatches) {
+            const inner = m.slice(1, -1).trim();
+            if (/^[a-zA-Z0-9ÁÉÍÓÚáéíóúÀàÃãÕõÇç\s\-_:;,.()]{2,100}$/.test(inner)) {
+              if (!inner.includes('Font') && !inner.includes('Identity') && !inner.includes('Adobe') && !inner.includes('ProcSet')) {
+                foundTexts.push(inner);
+              }
+            }
+          }
+        }
+      }
+
+      if (foundTexts.length > 0) {
+        text = Array.from(new Set(foundTexts)).join(' ');
       }
     } catch (e) {
-      console.warn('Literal extraction notice:', e.message);
+      console.warn('Fallback stream extraction notice:', e.message);
     }
   }
 
-  return text.trim();
+  // Garante a remoção de qualquer caractere binário não imprimível
+  return text.replace(/[^\x20-\x7E\x0A\x0D\xC0-\xFF]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function analyzeMedicalDocument(text, fileName = '') {
