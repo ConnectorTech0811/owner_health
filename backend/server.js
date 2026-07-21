@@ -31,11 +31,17 @@ const { contextMiddleware } = require('./src/middleware/context');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middlewares
-app.use(cors());
+// Middlewares — open CORS for all origins (Vercel + local Docker)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(contextMiddleware);
+
 
 // Servir arquivos estáticos da pasta uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
