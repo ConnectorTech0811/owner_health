@@ -43,35 +43,51 @@ app.use(contextMiddleware);
 
 
 // Servir arquivos estáticos da pasta uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+try {
+  const staticUploadsDir = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'uploads');
+  if (fs.existsSync(staticUploadsDir)) {
+    app.use('/uploads', express.static(staticUploadsDir));
+  }
+} catch (e) {}
 
-// Rotas principais
-app.use('/api/auth', authRoutes);
-app.use('/api/clients', clientRoutes);
-app.use('/api/dependents', dependentRoutes);
-app.use('/api/companies', companyRoutes);
-app.use('/api/professionals', professionalRoutes);
-app.use('/api/health-plans', healthPlanRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/upload', uploadRoutes);
+// Rotas principais (suporta rotas com ou sem prefixo /api)
+const routesMap = [
+  ['/auth', authRoutes],
+  ['/clients', clientRoutes],
+  ['/dependents', dependentRoutes],
+  ['/companies', companyRoutes],
+  ['/professionals', professionalRoutes],
+  ['/health-plans', healthPlanRoutes],
+  ['/users', userRoutes],
+  ['/upload', uploadRoutes],
+  ['/exams', examRoutes],
+  ['/prescriptions', prescriptionRoutes],
+  ['/medications', medicationRoutes],
+  ['/bioimpedance', bioimpedanceRoutes],
+  ['/anamnesis', anamnesisRoutes],
+  ['/satisfaction', satisfactionRoutes],
+  ['/audit-logs', auditLogsRoutes],
+  ['/agendas', agendasRoutes],
+  ['/bloqueios', bloqueiosRoutes],
+  ['/notificacoes', notificacoesRoutes],
+  ['/patient-anamnesis', patientAnamnesisRoutes],
+  ['/anamnesis-templates', anamnesisTemplateRoutes]
+];
 
-// Novos módulos
-app.use('/api/exams', examRoutes);
-app.use('/api/prescriptions', prescriptionRoutes);
-app.use('/api/medications', medicationRoutes);
-app.use('/api/bioimpedance', bioimpedanceRoutes);
-app.use('/api/anamnesis', anamnesisRoutes);
-app.use('/api/satisfaction', satisfactionRoutes);
-app.use('/api/audit-logs', auditLogsRoutes);
-app.use('/api/agendas', agendasRoutes);
-app.use('/api/bloqueios', bloqueiosRoutes);
-app.use('/api/notificacoes', notificacoesRoutes);
-app.use('/api/patient-anamnesis', patientAnamnesisRoutes);
-app.use('/api/anamnesis-templates', anamnesisTemplateRoutes);
+routesMap.forEach(([pathStr, routerObj]) => {
+  app.use(`/api${pathStr}`, routerObj);
+  app.use(pathStr, routerObj);
+});
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.json({ status: 'ok', system: 'Owner Health API', timestamp: new Date().toISOString() });
+});
+
+// Global Error Handler Middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled API Error:', err);
+  res.status(500).json({ error: err.message || 'Erro interno no servidor' });
 });
 
 // Start server only if not running on Vercel

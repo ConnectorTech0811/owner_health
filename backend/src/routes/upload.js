@@ -13,9 +13,13 @@ try {
   console.warn('pdf-parse não foi carregado:', e.message);
 }
 
-const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+const uploadsDir = process.env.VERCEL ? '/tmp' : path.join(__dirname, '../../uploads');
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Aviso: Não foi possível criar pasta de uploads:', e.message);
 }
 
 const storage = multer.diskStorage({
