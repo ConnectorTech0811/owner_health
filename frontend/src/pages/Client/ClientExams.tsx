@@ -41,23 +41,68 @@ export const ClientExams: React.FC = () => {
   const [aiWarnings, setAiWarnings] = useState<string[]>([]);
 
   const downloadExamTemplate = () => {
-    const templateText = `================================================
-MODELO DE EXAME / RESULTADO - OWNER HEALTH
-================================================
+    const pdfRaw = `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 450 >>
+stream
+BT
+/F1 16 Tf
+50 740 Td
+(MODELO DE EXAME / RESULTADO - OWNER HEALTH) Tj
+0 -30 Td
+/F1 12 Tf
+(Tipo de Exame: Hemograma Completo) Tj
+0 -20 Td
+(Data do Exame: 21/07/2026) Tj
+0 -20 Td
+(Laboratorio: Laboratorio Central de Analises) Tj
+0 -20 Td
+(Medico Solicitante: Dr. Roberto Santos) Tj
+0 -30 Td
+(RESULTADOS E LAUDO:) Tj
+0 -20 Td
+(- Hemacias: 4.8 milhoes/mm3) Tj
+0 -20 Td
+(- Hemoglobina: 14.5 g/dL) Tj
+0 -20 Td
+(- Leucocitos: 6.500/mm3) Tj
+0 -20 Td
+(- Plaquetas: 250.000/mm3) Tj
+0 -30 Td
+(Laudo: Teste de exame concluido sem alteracoes.) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000253 00000 n 
+0000000330 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+832
+%%EOF`;
 
-TIPO DE EXAME: Hemograma Completo
-DATA DO EXAME: 21/07/2026
-LABORATÓRIO: Laboratório Central de Análises
-MÉDICO SOLICITANTE: Dr. Roberto Santos
-
-RESULTADOS E LAUDO:
-Teste de exame concluído sem alterações.
-================================================`;
-
-    const blob = new Blob([templateText], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([pdfRaw], { type: 'application/pdf' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'modelo_exame_ownerhealth.txt';
+    link.download = 'modelo_exame_ownerhealth.pdf';
     link.click();
   };
   const [showShareModal, setShowShareModal] = useState<Exam | null>(null);
@@ -478,7 +523,7 @@ Teste de exame concluído sem alterações.
                       onClick={downloadExamTemplate}
                       className="text-[11px] font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
                     >
-                      <Download className="w-3.5 h-3.5" /> Baixar Modelo de Exame (.txt)
+                      <Download className="w-3.5 h-3.5" /> Baixar Modelo de Exame (.pdf)
                     </button>
                   </div>
 

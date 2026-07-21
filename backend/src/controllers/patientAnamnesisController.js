@@ -226,10 +226,35 @@ const getClientRequests = async (req, res) => {
   }
 };
 
+async function checkRequestOwnership(requestId, reqUser) {
+  if (!reqUser) return true;
+  try {
+    const requestItem = await db('patient_anamnesis_requests').where({ id: requestId }).first();
+    if (!requestItem) return false;
+
+    if (reqUser.eh_empresa || reqUser.tipo_profissional || reqUser.tipo === 'medico') return true;
+
+    const activeClientId = reqUser.cliente_id || reqUser.id;
+    if (requestItem.cliente_id === activeClientId) return true;
+
+    const clientObj = await db('clientes').where({ id: requestItem.cliente_id }).first();
+    if (clientObj && (clientObj.id === activeClientId || clientObj.usuario_id === reqUser.id)) return true;
+
+    return false;
+  } catch (e) {
+    return true;
+  }
+}
+
 // ─── GET /request/:request_id/form ─────────────────────────────────────────
 const getRequestForm = async (req, res) => {
   const { request_id } = req.params;
   try {
+    const isAllowed = await checkRequestOwnership(request_id, req.user);
+    if (!isAllowed) {
+      return res.status(403).json({ error: 'Acesso não autorizado: Esta solicitação de anamnese pertence a outro usuário.' });
+    }
+
     const sections = await db('patient_anamnesis_sections')
       .where({ request_id })
       .orderBy('ordem', 'asc')

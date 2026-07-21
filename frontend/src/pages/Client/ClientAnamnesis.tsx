@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ClipboardList, CheckCircle, Loader2, ChevronRight, ChevronLeft,
   Send, AlertCircle, Circle, CheckSquare, Type, AlignLeft,
-  BarChart3, Calendar, List, FileText
+  BarChart3, Calendar, List, FileText, ShieldAlert, Lock
 } from 'lucide-react';
 import { API_URL } from '../../config';
 
@@ -204,6 +205,9 @@ const QuestionField: React.FC<QuestionFieldProps> = ({ question, value, onChange
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export const ClientAnamnesis: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const reqParam = searchParams.get('requestId') || searchParams.get('token') || searchParams.get('request_id');
+
   const clienteId = localStorage.getItem('activeProfileId') || '1';
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -220,21 +224,44 @@ export const ClientAnamnesis: React.FC = () => {
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [errors, setErrors] = useState<Record<number, boolean>>({});
   const [submitError, setSubmitError] = useState('');
+  const [unauthorizedError, setUnauthorizedError] = useState('');
   const [viewingAnswersId, setViewingAnswersId] = useState<number | null>(null);
   const [viewingAnswersData, setViewingAnswersData] = useState<{form: Section[], answers: Record<number,string>} | null>(null);
   const [loadingViewAnswers, setLoadingViewAnswers] = useState(false);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [clienteId]);
 
   const loadData = async () => {
     setLoading(true);
+    setUnauthorizedError('');
     try {
       const respRes = await fetch(`${API_URL}/api/patient-anamnesis/client/${clienteId}/requests`, { headers });
       if (respRes.ok) {
-        const data = await respRes.json();
-        setResponses(Array.isArray(data) ? data : []);
+        const data: AnamnesisResponse[] = await respRes.json();
+        const list = Array.isArray(data) ? data : [];
+        setResponses(list);
+
+        if (reqParam) {
+          const targetId = parseInt(reqParam, 10);
+          const found = list.find(r => r.id === targetId);
+          if (found) {
+            if (found.status === 'aguardando') {
+              startForm(targetId);
+            } else {
+              openAnswers(targetId);
+            }
+          } else {
+            setUnauthorizedError('Acesso não autorizado: Este formulário de anamnese não pertence à sua conta ou não foi encontrado.');
+          }
+        } else {
+          // Se não houver reqParam, verifica se existe apenas 1 pendente para abrir automaticamente
+          const pending = list.filter(r => r.status === 'aguardando');
+          if (pending.length > 0) {
+            startForm(pending[0].id);
+          }
+        }
       }
     } catch {
       setResponses([]);
@@ -553,6 +580,17 @@ export const ClientAnamnesis: React.FC = () => {
         </div>
       </div>
 
+      {/* Alerta de acesso não autorizado */}
+      {unauthorizedError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4 text-red-900 mb-6 shadow-sm">
+          <ShieldAlert className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-black text-red-800">Acesso Restrito</h3>
+            <p className="text-xs font-semibold text-red-700 mt-1">{unauthorizedError}</p>
+          </div>
+        </div>
+      )}
+
       {/* Tabs de Navegação */}
       <div className="flex items-center gap-2 mb-6 border-b border-slate-200">
         <button
@@ -592,11 +630,11 @@ export const ClientAnamnesis: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-3xl p-10 text-center border-2 border-dashed border-slate-200 bg-slate-50">
-                  <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <h2 className="text-lg font-black text-slate-700">Tudo certo por aqui!</h2>
-                  <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
-                    Você não possui nenhuma solicitação de anamnese pendente no momento.
+                <div className="rounded-3xl p-10 text-center border-2 border-dashed border-slate-200 bg-slate-50 space-y-2">
+                  <Lock className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                  <h2 className="text-base font-black text-slate-800">Nenhum Formulário Disponível</h2>
+                  <p className="text-slate-600 text-xs font-semibold max-w-md mx-auto leading-relaxed">
+                    Não há formulário de anamnese pendente para o seu usuário. Caso seu médico tenha enviado um formulário, verifique com a clínica.
                   </p>
                 </div>
               )}

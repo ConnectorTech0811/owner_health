@@ -1,5 +1,6 @@
 const dbHelper = require('../utils/dbHelper');
 const bcrypt = require('bcryptjs');
+const db = require('../../knexfile');
 
 const getCompanies = async (req, res) => {
   try {

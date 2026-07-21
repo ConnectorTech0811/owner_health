@@ -22,6 +22,7 @@ const agendasRoutes = require('./src/routes/agendas');
 const bloqueiosRoutes = require('./src/routes/bloqueios');
 const notificacoesRoutes = require('./src/routes/notificacoes');
 const path = require('path');
+const fs = require('fs');
 const uploadRoutes = require('./src/routes/upload');
 const patientAnamnesisRoutes = require('./src/routes/patientAnamnesis');
 const anamnesisTemplateRoutes = require('./src/routes/anamnesisTemplateRoutes');

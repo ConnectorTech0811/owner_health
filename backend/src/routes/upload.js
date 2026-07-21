@@ -196,6 +196,12 @@ router.post('/', upload.single('file'), async (req, res) => {
     dataBuffer = fs.readFileSync(filePath);
 
     if (isPdf) {
+      const sampleHeader = dataBuffer.toString('utf-8', 0, 100).toLowerCase();
+      if (sampleHeader.includes('<!doctype') || sampleHeader.includes('<html')) {
+        return res.status(400).json({
+          error: 'O arquivo enviado não é um PDF válido (contém código HTML). Por favor, selecione o arquivo PDF original do seu exame.'
+        });
+      }
       extractedText = await extractPdfText(dataBuffer);
     } else {
       const strContent = dataBuffer.toString('utf-8');
