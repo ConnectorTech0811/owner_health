@@ -20,26 +20,29 @@ function formatToMysqlDate(dateStr) {
   return str;
 }
 
+async function resolveClienteId(rawId) {
+  const cId = parseInt(rawId) || 1;
+  // 1) Try exact id match first
+  try {
+    const byId = await db('clientes').where({ id: cId }).first();
+    if (byId) return byId.id;
+  } catch {}
+  // 2) Try usuario_id match
+  try {
+    const byUsuario = await db('clientes').where({ usuario_id: cId }).first();
+    if (byUsuario) return byUsuario.id;
+  } catch {}
+  return cId;
+}
+
 const getMedications = async (req, res) => {
   const { cliente_id } = req.params;
   try {
-    const cId = parseInt(cliente_id) || 1;
-    let realClienteId = cId;
-    try {
-      const client = await db('clientes').where({ id: cId }).orWhere({ usuario_id: cId }).first();
-      if (client) {
-        realClienteId = client.id;
-      }
-    } catch {}
+    const realClienteId = await resolveClienteId(cliente_id);
 
-    const medsRaw = await db('medicamentos')
+    const meds = await db('medicamentos')
       .where({ cliente_id: realClienteId })
-      .orWhere({ cliente_id: cId })
       .select();
-
-    const uniqueMedsMap = new Map();
-    medsRaw.forEach(m => uniqueMedsMap.set(m.id, m));
-    const meds = Array.from(uniqueMedsMap.values());
 
     const medIds = meds.map(m => m.id);
     const effects = medIds.length > 0
@@ -70,15 +73,7 @@ const createMedication = async (req, res) => {
   const { nome, posologia, horarios, data_inicio, data_fim, observacoes, email_lembrete, efeitos } = req.body;
   if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
   try {
-    const cId = parseInt(cliente_id) || 1;
-    let realClienteId = cId;
-    try {
-      const client = await db('clientes').where({ id: cId }).orWhere({ usuario_id: cId }).first();
-      if (client) {
-        realClienteId = client.id;
-      }
-    } catch {}
-
+    const realClienteId = await resolveClienteId(cliente_id);
     const mysqlDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     const novo = {
