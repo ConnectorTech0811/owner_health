@@ -32,3 +32,14 @@ lerna-debug.log*
 *.sln
 *.sw?
 .DS_Store
+
+ 
+
+# Local runtime secrets
+
+*.env
+
+backend.env
+
+owner-health-vm/
+
