@@ -224,6 +224,8 @@ export const DependentList: React.FC = () => {
                   <label className="block text-xs font-bold text-slate-600 mb-1">Data de Nascimento</label>
                   <input
                     type="date" required
+                    min="1940-01-01"
+                    max={new Date().toISOString().split('T')[0]}
                     value={form.data_nascimento}
                     onChange={e => setForm({...form, data_nascimento: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:outline-none"

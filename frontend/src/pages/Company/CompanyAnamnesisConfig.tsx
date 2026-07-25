@@ -4,7 +4,7 @@ import {
   Plus, Trash2, ChevronDown, ChevronUp, GripVertical, Settings,
   Save, Copy, Check, Send, Sparkles, Eye, ClipboardList, Users,
   Type, AlignLeft, Circle, CheckSquare, List, BarChart3, Calendar,
-  Loader2, AlertCircle, Edit3, ChevronRight
+  Loader2, AlertCircle, Edit3, ChevronRight, Stethoscope
 } from 'lucide-react';
 import { API_URL } from '../../config';
 import { CompanyAnamnesisPreviewModal } from './CompanyAnamnesisPreviewModal';
@@ -984,6 +984,10 @@ export const CompanyAnamnesisConfig: React.FC = () => {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <h4 className="font-bold text-sm text-slate-800">{item.nome_paciente}</h4>
+                            <p className="text-xs font-semibold text-indigo-600 mt-0.5 flex items-center gap-1">
+                              <Stethoscope className="w-3.5 h-3.5" />
+                              <span>Enviado por: <strong>{item.nome_medico || 'Dr(a). Médico'}</strong></span>
+                            </p>
                             <p className="text-xs text-slate-500 mt-0.5">{item.titulo}</p>
                           </div>
                           <span className="text-[10px] font-black uppercase text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">

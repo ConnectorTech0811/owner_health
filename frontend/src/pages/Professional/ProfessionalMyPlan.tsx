@@ -134,51 +134,53 @@ export const ProfessionalMyPlan: React.FC = () => {
             </div>
           </div>
 
-          {/* Card do Valor da Consulta */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-center min-w-[220px]">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Valor da Sua Consulta</span>
-            
-            {editingFee ? (
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center gap-1">
-                  <span className="text-sm font-bold text-slate-600">R$</span>
-                  <input
-                    type="number" step="0.01" min="0"
-                    value={newFee}
-                    onChange={e => setNewFee(e.target.value)}
-                    className="w-full bg-white border border-indigo-300 rounded-lg px-2 py-1 text-sm font-bold text-indigo-700 focus:outline-none"
-                  />
+          {/* Card do Valor da Consulta - Exclusivo para Médicos */}
+          {professional.tipo_profissional === 'medico' && (
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-center min-w-[220px]">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Valor da Sua Consulta</span>
+              
+              {editingFee ? (
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold text-slate-600">R$</span>
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={newFee}
+                      onChange={e => setNewFee(e.target.value)}
+                      className="w-full bg-white border border-indigo-300 rounded-lg px-2 py-1 text-sm font-bold text-indigo-700 focus:outline-none"
+                    />
+                  </div>
+                  {feeSuccess && <p className="text-[10px] font-bold text-emerald-600">{feeSuccess}</p>}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleUpdateFee}
+                      disabled={savingFee}
+                      className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition flex items-center gap-1 cursor-pointer"
+                    >
+                      {savingFee ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Salvar'}
+                    </button>
+                    <button
+                      onClick={() => setEditingFee(false)}
+                      className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-300 transition cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-                {feeSuccess && <p className="text-[10px] font-bold text-emerald-600">{feeSuccess}</p>}
-                <div className="flex items-center gap-2">
+              ) : (
+                <div className="flex items-center justify-between gap-3 mt-1">
+                  <span className="text-xl font-black text-indigo-600">R$ {valorConsulta.toFixed(2).replace('.', ',')}</span>
                   <button
-                    onClick={handleUpdateFee}
-                    disabled={savingFee}
-                    className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition flex items-center gap-1 cursor-pointer"
+                    onClick={() => setEditingFee(true)}
+                    className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-indigo-600 rounded-lg transition cursor-pointer"
+                    title="Alterar valor da consulta"
                   >
-                    {savingFee ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Salvar'}
-                  </button>
-                  <button
-                    onClick={() => setEditingFee(false)}
-                    className="px-2 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-300 transition cursor-pointer"
-                  >
-                    Cancelar
+                    <Edit2 className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-3 mt-1">
-                <span className="text-xl font-black text-indigo-600">R$ {valorConsulta.toFixed(2).replace('.', ',')}</span>
-                <button
-                  onClick={() => setEditingFee(true)}
-                  className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-indigo-600 rounded-lg transition cursor-pointer"
-                  title="Alterar valor da consulta"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

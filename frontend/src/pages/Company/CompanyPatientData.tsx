@@ -61,7 +61,7 @@ export const CompanyPatientData: React.FC = () => {
     : 'clinica';
 
   const fetchPatients = () => {
-    fetch(`${API_URL}/api/clients`, {
+    fetch(`${API_URL}/api/clients?incluir_inativos=true`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())

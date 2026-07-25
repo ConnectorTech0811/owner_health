@@ -241,6 +241,8 @@ export const ClientProfile: React.FC = () => {
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="date"
+                min="1940-01-01"
+                max={new Date().toISOString().split('T')[0]}
                 disabled={!editing}
                 value={form.data_nascimento}
                 onChange={e => setForm({ ...form, data_nascimento: e.target.value })}

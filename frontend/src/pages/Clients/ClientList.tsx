@@ -452,6 +452,8 @@ export const ClientList: React.FC = () => {
                     </span>
                     <input
                       type="date" required
+                      min="1940-01-01"
+                      max={new Date().toISOString().split('T')[0]}
                       value={form.data_nascimento}
                       onChange={e => setForm({ ...form, data_nascimento: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none focus:border-primary-400"

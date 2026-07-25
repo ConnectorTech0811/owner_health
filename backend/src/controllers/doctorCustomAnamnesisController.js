@@ -109,6 +109,13 @@ const getDoctorCustomAnamnesis = async (req, res) => {
         if (typeof item.sections_data === 'string') item.sections_data = JSON.parse(item.sections_data);
       } catch {}
 
+      // Buscar nome do médico solicitante
+      let prof = await db('profissionais').where({ id: item.medico_id }).first();
+      if (!prof) {
+        prof = await db('profissionais').where({ usuario_id: item.medico_id }).first();
+      }
+      item.nome_medico = prof ? (prof.tipo_profissional === 'medico' ? `Dr. ${prof.nome.replace(/^Dr\.\s*/i, '')}` : prof.nome) : 'Médico';
+
       // Buscar se há respostas do paciente
       const reqItem = await db('patient_anamnesis_requests')
         .where({ cliente_id: item.cliente_id, medico_id: item.medico_id })
@@ -148,6 +155,12 @@ const getAllCustomAnamnesis = async (req, res) => {
       try {
         if (typeof item.sections_data === 'string') item.sections_data = JSON.parse(item.sections_data);
       } catch {}
+
+      let prof = await db('profissionais').where({ id: item.medico_id }).first();
+      if (!prof) {
+        prof = await db('profissionais').where({ usuario_id: item.medico_id }).first();
+      }
+      item.nome_medico = prof ? (prof.tipo_profissional === 'medico' ? `Dr. ${prof.nome.replace(/^Dr\.\s*/i, '')}` : prof.nome) : 'Médico';
 
       const reqItem = await db('patient_anamnesis_requests')
         .where({ cliente_id: item.cliente_id, medico_id: item.medico_id })

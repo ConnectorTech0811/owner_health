@@ -79,6 +79,10 @@ export const RegisterClient: React.FC = () => {
       if (!isValidCPF(form.cpf)) { setError('CPF inválido'); return; }
       if (form.celular.length < 14) { setError('Celular inválido'); return; }
       const birth = new Date(form.data_nascimento);
+      if (birth.getFullYear() < 1940) {
+        setError('A data de nascimento não pode ter um ano anterior a 1940.');
+        return;
+      }
       const today = new Date();
       let age = today.getFullYear() - birth.getFullYear();
       const m = today.getMonth() - birth.getMonth();
@@ -359,7 +363,10 @@ const F: React.FC<FProps> = ({ label, id, value, onChange, placeholder, type = '
       <label htmlFor={id} className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>
       <div className="relative">
         {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
-        <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        <input id={id} type={type}
+          min={type === 'date' ? '1940-01-01' : undefined}
+          max={type === 'date' ? new Date().toISOString().split('T')[0] : undefined}
+          value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
           className={`w-full border ${borderColor} rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:ring-2 transition`} />
       </div>
     </div>

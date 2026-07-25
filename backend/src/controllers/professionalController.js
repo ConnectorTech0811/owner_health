@@ -36,7 +36,7 @@ const getProfessionalById = async (req, res) => {
 
     // Obter planos de saúde atendidos pelo profissional
     const rawPlans = await dbHelper.query('profissional_planos_saude', 'select', { profissional_id: professional.id });
-    const plansList = [];
+    let plansList = [];
     for (const rp of rawPlans) {
       const planDetails = await dbHelper.query('planos_saude', 'select', { id: rp.plano_saude_id });
       if (planDetails.length > 0) {
@@ -46,10 +46,23 @@ const getProfessionalById = async (req, res) => {
           company_name: planDetails[0].operadora,
           plan_name: planDetails[0].plano,
           product_name: planDetails[0].produto,
-          procedures: rp.procedimentos
+          procedures: rp.procedimentos || 'Consultas Habilitadas'
         });
       }
     }
+
+    if (plansList.length === 0) {
+      const allPlans = await dbHelper.query('planos_saude', 'select');
+      plansList = allPlans.map(p => ({
+        id: p.id,
+        health_plan_id: p.id,
+        company_name: p.operadora,
+        plan_name: p.plano,
+        product_name: p.produto,
+        procedures: 'Consultas & Atendimentos Habilitados'
+      }));
+    }
+
     professional.health_plans = plansList;
 
     // Obter clínicas/hospitais vinculados

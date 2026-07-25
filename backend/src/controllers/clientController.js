@@ -22,8 +22,8 @@ const getClients = async (req, res) => {
       baseClients = await db('clientes').select('*');
     }
 
-    // Filtrar pacientes inativos por padrão (status !== 'inativo')
-    if (String(incluir_inativos) !== 'true') {
+    // Filtrar pacientes inativos apenas quando NÃO for clínica/empresa e NÃO for solicitado incluir_inativos
+    if (String(incluir_inativos) !== 'true' && !isEmpresa) {
       baseClients = baseClients.filter(c => c.status !== 'inativo');
     }
 

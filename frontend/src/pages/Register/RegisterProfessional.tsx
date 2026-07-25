@@ -400,7 +400,10 @@ const InputField: React.FC<InputFieldProps> = ({ label, id, value, onChange, pla
       <label htmlFor={id} className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>
       <div className="relative">
         {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
-        <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={`w-full border ${borderColor} rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:ring-2 transition`} />
+        <input id={id} type={type}
+          min={type === 'date' ? '1940-01-01' : undefined}
+          max={type === 'date' ? new Date().toISOString().split('T')[0] : undefined}
+          value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={`w-full border ${borderColor} rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:ring-2 transition`} />
       </div>
     </div>
   );

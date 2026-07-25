@@ -104,13 +104,30 @@ const authenticate = async (req, res) => {
       return res.status(401).json({ error: 'E-mail ou senha incorretos' });
     }
 
-    // Coleta todas as roles ativas para esse usuário
+    // Coleta todas as roles ativas e VERIFICADAS para esse usuário
     const roles = [];
     if (user.eh_admin) roles.push('admin');
-    if (user.eh_cliente) roles.push('client');
-    if (user.eh_empresa) roles.push('company');
-    if (user.eh_profissional) roles.push('professional');
-    if (user.eh_dependente) roles.push('dependent');
+
+    if (user.eh_cliente) {
+      const c = (await dbHelper.query('clientes', 'select', { usuario_id: user.id }))[0]
+             || (await dbHelper.query('clientes', 'select', { email: user.email }))[0];
+      if (c) roles.push('client');
+    }
+    if (user.eh_empresa) {
+      const e = (await dbHelper.query('empresas', 'select', { usuario_id: user.id }))[0]
+             || (await dbHelper.query('empresas', 'select', { email: user.email }))[0];
+      if (e) roles.push('company');
+    }
+    if (user.eh_profissional) {
+      const p = (await dbHelper.query('profissionais', 'select', { usuario_id: user.id }))[0]
+             || (await dbHelper.query('profissionais', 'select', { email: user.email }))[0];
+      if (p) roles.push('professional');
+    }
+    if (user.eh_dependente) {
+      const d = (await dbHelper.query('dependentes', 'select', { usuario_id: user.id }))[0]
+             || (await dbHelper.query('dependentes', 'select', { email: user.email }))[0];
+      if (d) roles.push('dependent');
+    }
 
     if (roles.length === 0) {
       return res.status(403).json({ error: 'Nenhum perfil ativo associado a este usuário' });
