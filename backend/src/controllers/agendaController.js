@@ -15,6 +15,30 @@ exports.createAgenda = async (req, res) => {
       return res.status(400).json({ error: 'profissional_id and slots are required' });
     }
 
+    // Verificar se o mês de alguma das datas está bloqueado/fechado
+    const bloqueios = await db('agenda_bloqueios')
+      .where({ profissional_id: targetId, status: 'bloqueado' })
+      .select('mes', 'ano');
+
+    const blockedSet = new Set(bloqueios.map(b => `${b.ano}-${String(b.mes).padStart(2, '0')}`));
+
+    const isDateStringBlocked = (dateStr) => {
+      if (!dateStr) return false;
+      const parts = String(dateStr).split('T')[0].split('-');
+      if (parts.length < 2) return false;
+      const y = parts[0];
+      const m = parts[1];
+      return blockedSet.has(`${y}-${m}`);
+    };
+
+    const blockedSlot = slots.find(s => isDateStringBlocked(s.data));
+    if (blockedSlot) {
+      const parts = String(blockedSlot.data).split('T')[0].split('-');
+      return res.status(400).json({ 
+        error: `A agenda de ${parts[1]}/${parts[0]} está fechada/bloqueada para novas marcações.` 
+      });
+    }
+
     const dates = [...new Set(slots.map(s => s.data))];
     let existingSlots = [];
     if (dates.length > 0) {

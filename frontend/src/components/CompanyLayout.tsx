@@ -40,17 +40,21 @@ export const CompanyLayout: React.FC<CompanyLayoutProps> = ({ children }) => {
   const token = localStorage.getItem('token');
 
   const handleLogout = () => {
+    if ((window as any).__anamnesisIsDirty && typeof (window as any).__onUnsavedExitAttempt === 'function') {
+      (window as any).__onUnsavedExitAttempt('/login');
+      return;
+    }
     localStorage.clear();
     navigate('/login');
   };
 
   const handleSwitchRole = () => {
-    if (user.roles && user.roles.length > 1) {
-      // Alterna para outra role que não seja company, ou volta pro login para escolher
-      navigate('/dashboard');
-    } else {
-      navigate('/login');
+    const target = (user.roles && user.roles.length > 1) ? '/dashboard' : '/login';
+    if ((window as any).__anamnesisIsDirty && typeof (window as any).__onUnsavedExitAttempt === 'function') {
+      (window as any).__onUnsavedExitAttempt(target);
+      return;
     }
+    navigate(target);
   };
 
   useEffect(() => {
@@ -126,6 +130,10 @@ export const CompanyLayout: React.FC<CompanyLayoutProps> = ({ children }) => {
       <button
         key={item.path}
         onClick={() => {
+          if ((window as any).__anamnesisIsDirty && typeof (window as any).__onUnsavedExitAttempt === 'function') {
+            (window as any).__onUnsavedExitAttempt(item.path);
+            return;
+          }
           navigate(item.path);
           onClick?.();
         }}

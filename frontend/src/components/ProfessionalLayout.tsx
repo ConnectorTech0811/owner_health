@@ -30,6 +30,10 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
   const tipo = user.tipo_profissional || 'medico';
 
   const handleLogout = () => {
+    if ((window as any).__anamnesisIsDirty && typeof (window as any).__onUnsavedExitAttempt === 'function') {
+      (window as any).__onUnsavedExitAttempt('/login');
+      return;
+    }
     localStorage.clear();
     navigate('/login');
   };
@@ -92,7 +96,14 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
     return (
       <button
         key={item.path}
-        onClick={() => { navigate(item.path); onClick?.(); }}
+        onClick={() => {
+          if ((window as any).__anamnesisIsDirty && typeof (window as any).__onUnsavedExitAttempt === 'function') {
+            (window as any).__onUnsavedExitAttempt(item.path);
+            return;
+          }
+          navigate(item.path);
+          onClick?.();
+        }}
         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer text-left ${
           isActive
             ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/10'

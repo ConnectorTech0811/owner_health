@@ -4,14 +4,24 @@ const getTemplates = async (req, res) => {
   const { empresa_id } = req.params;
   try {
     const templates = await db('anamnesis_templates')
-      .where({ empresa_id })
+      .where({ empresa_id: parseInt(empresa_id) })
       .orderBy('criado_em', 'desc')
       .select();
+
+    const emp = await db('empresas').where({ id: parseInt(empresa_id) }).first();
+    const empNome = emp ? (emp.nome_fantasia || emp.razao_social || emp.nome_responsavel) : 'Clínica/Hospital';
 
     const parsed = templates.map(t => {
       try {
         if (typeof t.sections_data === 'string') t.sections_data = JSON.parse(t.sections_data);
       } catch {}
+
+      if (!t.criado_por_nome || t.criado_por_nome === 'Usuário') {
+        t.criado_por_nome = empNome;
+      }
+      if (!t.criado_por_perfil) {
+        t.criado_por_perfil = 'Clínica/Hospital';
+      }
       return t;
     });
 
@@ -23,18 +33,37 @@ const getTemplates = async (req, res) => {
 };
 
 const createTemplate = async (req, res) => {
-  const { empresa_id, titulo, nome, descricao, sections_data, conteudo } = req.body;
+  const { empresa_id, titulo, nome, descricao, sections_data, conteudo, criado_por_nome, criado_por_perfil } = req.body;
   try {
-    // suporta tanto 'sections_data' quanto 'conteudo' para compatibilidade
     const sectionsJson = sections_data 
       ? (typeof sections_data === 'string' ? sections_data : JSON.stringify(sections_data))
       : (conteudo ? (typeof conteudo === 'string' ? conteudo : JSON.stringify(conteudo)) : '[]');
+
+    let autorNome = criado_por_nome;
+    let autorPerfil = criado_por_perfil;
+
+    if (!autorNome || autorNome === 'Usuário') {
+      if (req.user) {
+        autorNome = req.user.nome || req.user.name || req.user.razao_social || req.user.nome_fantasia;
+      }
+      if (!autorNome && empresa_id) {
+        const emp = await db('empresas').where({ id: parseInt(empresa_id) }).first();
+        if (emp) autorNome = emp.nome_fantasia || emp.razao_social || emp.nome_responsavel;
+      }
+      if (!autorNome) autorNome = 'Clínica/Hospital';
+    }
+
+    if (!autorPerfil || autorPerfil === 'Usuário') {
+      autorPerfil = 'Clínica/Hospital';
+    }
 
     const data = {
       empresa_id: parseInt(empresa_id),
       nome: titulo || nome || 'Modelo sem nome',
       descricao: descricao || '',
       sections_data: sectionsJson,
+      criado_por_nome: autorNome,
+      criado_por_perfil: autorPerfil,
       criado_em: new Date().toISOString(),
       atualizado_em: new Date().toISOString()
     };

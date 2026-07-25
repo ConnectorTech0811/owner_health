@@ -27,6 +27,9 @@ const uploadRoutes = require('./src/routes/upload');
 const patientAnamnesisRoutes = require('./src/routes/patientAnamnesis');
 const anamnesisTemplateRoutes = require('./src/routes/anamnesisTemplateRoutes');
 
+const accessRoutes = require('./src/routes/access');
+const doctorCustomAnamnesisRoutes = require('./src/routes/doctorCustomAnamnesisRoutes');
+
 const { contextMiddleware } = require('./src/middleware/context');
 
 const app = express();
@@ -72,7 +75,9 @@ const routesMap = [
   ['/bloqueios', bloqueiosRoutes],
   ['/notificacoes', notificacoesRoutes],
   ['/patient-anamnesis', patientAnamnesisRoutes],
-  ['/anamnesis-templates', anamnesisTemplateRoutes]
+  ['/anamnesis-templates', anamnesisTemplateRoutes],
+  ['/access', accessRoutes],
+  ['/doctor-custom-anamnesis', doctorCustomAnamnesisRoutes]
 ];
 
 routesMap.forEach(([pathStr, routerObj]) => {

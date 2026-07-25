@@ -5,7 +5,7 @@ const {
   getSections, createSection, updateSection, deleteSection, reorderSections,
   getQuestions, createQuestion, updateQuestion, deleteQuestion, reorderQuestions,
   getOptions, createOption, updateOption, deleteOption, updateOptions,
-  getFullForm,
+  getFullForm, saveBulkForm,
   submitResponse, getResponses, getResponseDetail, getCompanyResponses
 } = require('../controllers/anamnesisFormController');
 
@@ -16,6 +16,7 @@ router.put('/:id', updateAnamnesis);
 
 // ── Formulário Completo (para renderização no paciente) ───────────────
 router.get('/form/:empresa_id', getFullForm);
+router.post('/form/:empresa_id/bulk', saveBulkForm);
 
 // ── Seções ────────────────────────────────────────────────────────────
 router.get('/empresa/:empresa_id/sections', getSections);

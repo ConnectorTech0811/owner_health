@@ -63,6 +63,59 @@ exports.fecharMes = async (req, res) => {
       status: 'bloqueado'
     });
 
+    // Se a ação for realizada por alguém diferente do próprio médico (ex: Administrativo/Secretária)
+    const targetProf = await db('profissionais').where({ id: targetId }).first();
+    if (targetProf && targetProf.usuario_id !== req.user.id) {
+      // Descobrir qual perfil fechou a agenda (Administrativo ou Secretária)
+      let perfilNome = 'A Secretária';
+
+      const senderUser = await db('usuarios').where({ id: req.user.id }).first();
+      const senderProf = await db('profissionais').where({ usuario_id: req.user.id }).first();
+
+      if (senderUser && senderUser.eh_admin) {
+        perfilNome = 'O Administrativo';
+      } else if (senderProf && senderProf.tipo_profissional) {
+        const tipo = senderProf.tipo_profissional.toLowerCase();
+        if (tipo.includes('admin')) {
+          perfilNome = 'O Administrativo';
+        } else if (tipo.includes('secretar') || tipo.includes('recepc')) {
+          perfilNome = 'A Secretária';
+        } else if (tipo.includes('medico') || tipo.includes('médico')) {
+          perfilNome = 'O Médico';
+        } else {
+          perfilNome = `O(A) ${senderProf.tipo_profissional}`;
+        }
+      } else if (senderUser && senderUser.eh_empresa) {
+        perfilNome = 'A Secretária';
+      } else if (req.user && Array.isArray(req.user.roles)) {
+        if (req.user.roles.includes('admin')) {
+          perfilNome = 'O Administrativo';
+        } else if (req.user.roles.includes('company')) {
+          perfilNome = 'A Secretária';
+        }
+      }
+
+      const mesesNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      const meext = mesesNames[parseInt(mes) - 1] || mes;
+      
+      const now = new Date();
+      const dia = String(now.getDate()).padStart(2, '0');
+      const mesNum = String(now.getMonth() + 1).padStart(2, '0');
+      const anoNum = now.getFullYear();
+      const hora = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const dataHoraStr = `${dia}/${mesNum}/${anoNum} às ${hora}:${min}`;
+
+      const mensagem = `${perfilNome} fechou sua agenda do mês de ${meext}/${ano} em ${dataHoraStr}.`;
+
+      await db('notificacoes_usuarios').insert({
+        usuario_id: targetProf.usuario_id,
+        mensagem,
+        tipo: 'aviso',
+        lida: 0
+      });
+    }
+
     res.json({ message: 'Mês bloqueado com sucesso' });
   } catch (error) {
     console.error('Erro ao fechar mês:', error);

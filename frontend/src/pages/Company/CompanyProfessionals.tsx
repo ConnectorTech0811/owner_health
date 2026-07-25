@@ -23,12 +23,17 @@ export const CompanyProfessionals: React.FC = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   
   const [showPassword, setShowPassword] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState('');
   const [emailDomainError, setEmailDomainError] = useState('');
+
+  // Filtros dinâmicos
+  const [filterNome, setFilterNome] = useState('');
+  const [filterContato, setFilterContato] = useState('');
+  const [filterCargo, setFilterCargo] = useState('todos');
+  const [filterStatus, setFilterStatus] = useState('ativo');
 
   const [form, setForm] = useState({
     nome: '', cpf: '', data_nascimento: '',
@@ -290,16 +295,50 @@ export const CompanyProfessionals: React.FC = () => {
   const user = userRaw ? JSON.parse(userRaw) : null;
   const currentUserRole = user?.tipo_profissional || 'medico';
 
+  const normalizeText = (text?: string | null) => {
+    if (!text) return '';
+    return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  };
+
+  const normalizeDigits = (text?: string | null) => {
+    if (!text) return '';
+    return text.replace(/\D/g, '');
+  };
+
   const filteredProfs = professionals.filter(p => {
     if ((currentUserRole === 'secretario' || currentUserRole === 'secretaria') && p.tipo_profissional === 'administrativo') {
       return false;
     }
-    const q = searchQuery.toLowerCase();
-    return (
-      p.nome.toLowerCase().includes(q) ||
-      (p.tipo_profissional || '').toLowerCase().includes(q) ||
-      (p.email || '').toLowerCase().includes(q)
-    );
+
+    // 1. Filtro por Nome (aproximação e sem acentos)
+    const nomeNorm = normalizeText(p.nome);
+    const filterNomeNorm = normalizeText(filterNome.trim());
+    const matchNome = !filterNomeNorm || nomeNorm.includes(filterNomeNorm);
+
+    // 2. Filtro por E-mail / Contato
+    const contatoNorm = normalizeText(filterContato.trim());
+    const contatoDigits = normalizeDigits(filterContato);
+    const emailNorm = normalizeText(p.email);
+    const celDigits = normalizeDigits(p.celular);
+    const matchContato = !filterContato.trim() || 
+      emailNorm.includes(contatoNorm) || 
+      (contatoDigits && celDigits.includes(contatoDigits)) ||
+      (p.celular && p.celular.toLowerCase().includes(filterContato.toLowerCase().trim()));
+
+    // 3. Filtro por Cargo / Perfil
+    const profCargo = (p.tipo_profissional || '').toLowerCase();
+    const matchCargo = filterCargo === 'todos' || 
+      (filterCargo === 'medico' && profCargo === 'medico') ||
+      (filterCargo === 'secretario' && (profCargo === 'secretario' || profCargo === 'secretaria')) ||
+      (filterCargo === 'administrativo' && profCargo === 'administrativo');
+
+    // 4. Filtro por Status (Ativo / Inativo)
+    const isAtivo = p.ativo !== false && p.ativo !== 0 && p.ativo !== '0';
+    const matchStatus = filterStatus === 'todos' ||
+      (filterStatus === 'ativo' && isAtivo) ||
+      (filterStatus === 'inativo' && !isAtivo);
+
+    return matchNome && matchContato && matchCargo && matchStatus;
   });
 
   return (
@@ -323,20 +362,85 @@ export const CompanyProfessionals: React.FC = () => {
         </button>
       </div>
 
-      {/* Busca e Lista */}
+      {/* PAINEL DE FILTROS MULTI-CAMPO */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="relative max-w-md">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-            <Search className="w-4 h-4" />
-          </span>
-          <input
-            type="text"
-            placeholder="Buscar por nome, e-mail ou cargo..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs font-medium focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
-          />
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <Search className="w-4 h-4 text-indigo-600" />
+            <span>Filtros de Busca da Equipe</span>
+          </h3>
+          {(filterNome || filterContato || filterCargo !== 'todos' || filterStatus !== 'ativo') && (
+            <button
+              onClick={() => { setFilterNome(''); setFilterContato(''); setFilterCargo('todos'); setFilterStatus('ativo'); }}
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+            >
+              Limpar Filtros
+            </button>
+          )}
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {/* 1. Nome do Profissional (Busca aproximada em tempo real) */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">Nome do Profissional</label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <Search className="w-4 h-4" />
+              </span>
+              <input
+                type="text"
+                placeholder="Digite o nome (busca aproximada...)"
+                value={filterNome}
+                onChange={e => setFilterNome(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:bg-white transition"
+              />
+            </div>
+          </div>
+
+          {/* 2. E-mail / Contato */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">E-mail ou Telefone</label>
+            <input
+              type="text"
+              placeholder="Digite o e-mail ou celular..."
+              value={filterContato}
+              onChange={e => setFilterContato(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:bg-white transition"
+            />
+          </div>
+
+          {/* 3. Cargo / Perfil */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">Cargo / Perfil</label>
+            <select
+              value={filterCargo}
+              onChange={e => setFilterCargo(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-indigo-500 focus:bg-white transition text-slate-800"
+            >
+              <option value="todos">Todos os Cargos</option>
+              <option value="medico">Médicos</option>
+              <option value="secretario">Secretários(as)</option>
+              {currentUserRole !== 'secretario' && currentUserRole !== 'secretaria' && (
+                <option value="administrativo">Administrativo</option>
+              )}
+            </select>
+          </div>
+
+          {/* 4. Status (Ativo / Inativo) */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">Status</label>
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-indigo-500 focus:bg-white transition text-slate-800"
+            >
+              <option value="ativo">Ativos (Padrão)</option>
+              <option value="inativo">Inativos</option>
+              <option value="todos">Todos</option>
+            </select>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex flex-col justify-center items-center py-12 space-y-2">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
@@ -345,7 +449,7 @@ export const CompanyProfessionals: React.FC = () => {
         ) : filteredProfs.length === 0 ? (
           <div className="text-center py-10 border border-dashed border-slate-100 rounded-2xl">
             <Users className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-xs text-slate-500 font-bold">Nenhum profissional encontrado.</p>
+            <p className="text-xs text-slate-500 font-bold">Nenhum profissional encontrado para os filtros informados.</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-150">

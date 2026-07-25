@@ -254,6 +254,16 @@ export const NotificationBell: React.FC = () => {
                           </button>
                         </div>
                       )}
+                      {(notif.tipo === 'acesso_prontuario' || notif.mensagem.includes('prontuário')) && (
+                        <div className="mt-2">
+                          <a
+                            href={`/professional/patients?cpf=${notif.referencia_id || ''}`}
+                            className="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-xs"
+                          >
+                            Ver Prontuário
+                          </a>
+                        </div>
+                      )}
                     </div>
                     <div className="shrink-0 flex flex-col items-center gap-2">
                       {notif.lida === 0 && notif.tipo !== 'acao_necessaria' && (
@@ -308,8 +318,16 @@ export const NotificationBell: React.FC = () => {
                   {selectedNotification.mensagem}
                 </p>
               </div>
-              <div className="mt-6 flex justify-end">
-                <button onClick={() => setSelectedNotification(null)} className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-sm shadow-md hover:bg-indigo-700 transition-colors">
+              <div className="mt-6 flex justify-end gap-3">
+                {(selectedNotification.tipo === 'acesso_prontuario' || selectedNotification.mensagem.includes('prontuário')) && (
+                  <a
+                    href={`/professional/patients?cpf=${selectedNotification.referencia_id || ''}`}
+                    className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center"
+                  >
+                    Ver Prontuário
+                  </a>
+                )}
+                <button onClick={() => setSelectedNotification(null)} className="px-6 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-300 transition-colors">
                   Fechar
                 </button>
               </div>

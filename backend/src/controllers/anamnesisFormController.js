@@ -332,11 +332,13 @@ const updateOptions = async (req, res) => {
 const getFullForm = async (req, res) => {
   const { empresa_id } = req.params;
   try {
+    const companyIdInt = parseInt(empresa_id);
     let sections, questions, options;
 
     try {
       sections = await db('anamnesis_sections')
-        .where({ empresa_id, ativo: 1 })
+        .where({ empresa_id: companyIdInt })
+        .whereNot({ ativo: 0 })
         .orderBy('ordem', 'asc')
         .select();
 
@@ -344,7 +346,7 @@ const getFullForm = async (req, res) => {
       if (sectionIds.length) {
         questions = await db('anamnesis_questions')
           .whereIn('section_id', sectionIds)
-          .where({ ativo: 1 })
+          .whereNot({ ativo: 0 })
           .orderBy('ordem', 'asc')
           .select();
 
@@ -352,7 +354,6 @@ const getFullForm = async (req, res) => {
         if (questionIds.length) {
           options = await db('anamnesis_options')
             .whereIn('question_id', questionIds)
-            .where({ ativo: 1 })
             .orderBy('ordem', 'asc')
             .select();
         } else {
@@ -362,7 +363,8 @@ const getFullForm = async (req, res) => {
         questions = [];
         options = [];
       }
-    } catch {
+    } catch (dbErr) {
+      console.error('DB error in getFullForm:', dbErr);
       const { memoryDb } = dbHelper;
       sections = (memoryDb.anamnesis_sections || [])
         .filter(s => String(s.empresa_id) === String(empresa_id) && s.ativo !== 0)
@@ -515,10 +517,97 @@ const getCompanyResponses = async (req, res) => {
   }
 };
 
+const saveBulkForm = async (req, res) => {
+  const { empresa_id } = req.params;
+  const { sections } = req.body;
+
+  try {
+    const companyIdInt = parseInt(empresa_id);
+
+    // Apagar seções/perguntas/opções antigas da empresa para substituição limpa
+    const oldSections = await db('anamnesis_sections').where({ empresa_id: companyIdInt }).select('id');
+    const oldSectionIds = oldSections.map(s => s.id);
+
+    if (oldSectionIds.length > 0) {
+      const oldQuestions = await db('anamnesis_questions').whereIn('section_id', oldSectionIds).select('id');
+      const oldQuestionIds = oldQuestions.map(q => q.id);
+      if (oldQuestionIds.length > 0) {
+        await db('anamnesis_options').whereIn('question_id', oldQuestionIds).delete();
+      }
+      await db('anamnesis_questions').whereIn('section_id', oldSectionIds).delete();
+      await db('anamnesis_sections').where({ empresa_id: companyIdInt }).delete();
+    }
+
+    if (!Array.isArray(sections) || sections.length === 0) {
+      return res.json({ message: 'Formulário limpo com sucesso.' });
+    }
+
+    // Salvar novas seções, perguntas e opções com mapeamento de IDs
+    for (let si = 0; si < sections.length; si++) {
+      const s = sections[si];
+      const secData = {
+        empresa_id: companyIdInt,
+        titulo: s.titulo || `Seção ${si + 1}`,
+        descricao: s.descricao || '',
+        ordem: si,
+        ativo: 1
+      };
+
+      const [createdSectionId] = await db('anamnesis_sections').insert(secData);
+
+      if (Array.isArray(s.questions) && s.questions.length > 0) {
+        const oldToNewOptionIds = new Map();
+
+        for (let qi = 0; qi < s.questions.length; qi++) {
+          const q = s.questions[qi];
+          const qData = {
+            section_id: createdSectionId,
+            texto: q.texto || `Pergunta ${qi + 1}`,
+            tipo: q.tipo || 'text',
+            obrigatoria: q.obrigatoria ? 1 : 0,
+            ordem: qi,
+            placeholder: q.placeholder || '',
+            descricao: q.descricao || '',
+            escala_min: q.escala_min || 1,
+            escala_max: q.escala_max || 10,
+            escala_label_min: q.escala_label_min || 'Mínimo',
+            escala_label_max: q.escala_label_max || 'Máximo',
+            parent_option_id: q.parent_option_id ? (oldToNewOptionIds.get(q.parent_option_id) || null) : null,
+            ativo: 1
+          };
+
+          const [createdQId] = await db('anamnesis_questions').insert(qData);
+
+          if (Array.isArray(q.options) && q.options.length > 0) {
+            for (let oi = 0; oi < q.options.length; oi++) {
+              const opt = q.options[oi];
+              const optData = {
+                question_id: createdQId,
+                texto: opt.texto || `Opção ${oi + 1}`,
+                ordem: oi
+              };
+              const [createdOptId] = await db('anamnesis_options').insert(optData);
+
+              if (opt.id) {
+                oldToNewOptionIds.set(opt.id, createdOptId);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return res.json({ message: 'Formulário de anamnese salvo com sucesso!' });
+  } catch (err) {
+    console.error('Erro em saveBulkForm:', err);
+    return res.status(500).json({ error: `Erro ao salvar formulário: ${err.message}` });
+  }
+};
+
 module.exports = {
   getSections, createSection, updateSection, deleteSection, reorderSections,
   getQuestions, createQuestion, updateQuestion, deleteQuestion, reorderQuestions,
   getOptions, createOption, updateOption, deleteOption, updateOptions,
-  getFullForm,
+  getFullForm, saveBulkForm,
   submitResponse, getResponses, getResponseDetail, getCompanyResponses
 };

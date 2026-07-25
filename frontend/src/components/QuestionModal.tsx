@@ -5,7 +5,7 @@ import { QUESTION_TYPES, QUESTION_TYPE_MAP } from '../pages/Company/CompanyAnamn
 
 interface QuestionModalProps {
   question: Question | null;
-  sectionId: number;
+  sectionId: number | string;
   onSave: (q: Question) => void;
   onClose: () => void;
 }
@@ -24,7 +24,12 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({ question, sectionI
   const sf = (key: keyof Question, val: unknown) => setForm(f => ({ ...f, [key]: val }));
 
   const handleSave = () => {
-    const q = { ...form, options: options.filter(o => o.texto.trim()).map((o, i) => ({ ...o, ordem: i })) };
+    const processedOptions = options.filter(o => o.texto.trim()).map((o, i) => ({
+      ...o,
+      id: o.id || (Date.now() + i),
+      ordem: i
+    }));
+    const q = { ...form, options: processedOptions };
     onSave(q);
   };
 

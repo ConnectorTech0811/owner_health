@@ -280,6 +280,34 @@ const getSharedPatientData = async (req, res) => {
       return res.status(404).json({ error: 'Paciente não encontrado ou compartilhamento não autorizado.' });
     }
 
+    // Trava de segurança: Se for Perfil Médico, verificar se há liberação da clínica ou do paciente
+    if (req.user) {
+      let doctor = null;
+      if (req.user.tipo_profissional === 'medico') {
+        doctor = await db('profissionais').where({ usuario_id: req.user.id }).first();
+        if (!doctor && req.user.profissional_id) {
+          doctor = await db('profissionais').where({ id: req.user.profissional_id }).first();
+        }
+      } else {
+        doctor = await db('profissionais').where({ usuario_id: req.user.id, tipo_profissional: 'medico' }).first();
+      }
+
+      if (doctor) {
+        const hasAccessTable = await db.schema.hasTable('paciente_medico_acessos');
+        if (hasAccessTable) {
+          const permissao = await db('paciente_medico_acessos')
+            .where({ cliente_id: client.id, medico_id: doctor.id })
+            .first();
+
+          if (!permissao) {
+            return res.status(403).json({
+              error: 'Você não possui autorização para visualizar o prontuário deste paciente. É necessária a liberação pela clínica ou pelo próprio paciente.'
+            });
+          }
+        }
+      }
+    }
+
     const exams = await dbHelper.query('exames', 'select', { cliente_id: client.id }).catch(() => []);
     const prescriptions = await dbHelper.query('receitas', 'select', { cliente_id: client.id }).catch(() => []);
     const bioimpedance = await dbHelper.query('bioimpedancia', 'select', { cliente_id: client.id }).catch(() => []);

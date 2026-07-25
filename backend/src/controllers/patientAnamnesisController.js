@@ -61,22 +61,62 @@ async function cloneCustomSections(sections, requestId) {
 }
 
 // ─── Helper: notificar paciente ─────────────────────────────────────────────
-async function notificarPaciente(clienteId, medicoId, requestId) {
+async function notificarPaciente(clienteId, medicoId, requestId, reqUser) {
   try {
     const cliente = await db('clientes').where({ id: clienteId }).first();
     if (!cliente || !cliente.usuario_id) return;
 
-    let medicoNome = 'A clínica';
+    let senderName = null;
+
+    // 1. Tentar resolver por medicoId (verificando id e usuario_id)
     if (medicoId) {
-      const prof = await db('profissionais').where({ id: medicoId }).first();
-      if (prof) medicoNome = `O(a) Dr(a). ${prof.nome}`;
+      let prof = await db('profissionais').where({ id: parseInt(medicoId) }).first();
+      if (!prof) {
+        prof = await db('profissionais').where({ usuario_id: parseInt(medicoId) }).first();
+      }
+      if (prof) {
+        if (prof.tipo_profissional === 'medico') {
+          senderName = `Dr(a). ${prof.nome}`;
+        } else {
+          senderName = prof.nome;
+        }
+      }
+    }
+
+    // 2. Se ainda não resolveu e temos reqUser
+    if (!senderName && reqUser) {
+      const uId = typeof reqUser === 'object' ? reqUser.id : parseInt(reqUser);
+      if (uId) {
+        let prof = await db('profissionais').where({ usuario_id: uId }).first();
+        if (prof) {
+          if (prof.tipo_profissional === 'medico') {
+            senderName = `Dr(a). ${prof.nome}`;
+          } else {
+            senderName = prof.nome;
+          }
+        } else {
+          const emp = await db('empresas').where({ usuario_id: uId }).first();
+          if (emp) {
+            senderName = emp.nome_fantasia || emp.razao_social || 'Clínica';
+          } else if (typeof reqUser === 'object' && (reqUser.nome || reqUser.name)) {
+            senderName = reqUser.nome || reqUser.name;
+          }
+        }
+      }
+    }
+
+    // 3. Fallback se nada foi encontrado
+    if (!senderName) {
+      const empDefault = await db('empresas').where({ id: 1 }).first();
+      senderName = empDefault ? (empDefault.nome_fantasia || empDefault.razao_social) : 'A clínica';
     }
 
     await db('notificacoes_usuarios').insert({
       usuario_id: cliente.usuario_id,
-      mensagem: `Nova Anamnese: ${medicoNome} enviou um formulário para você preencher.`,
+      mensagem: `Nova Anamnese: ${senderName} enviou um formulário para você preencher.`,
       tipo: 'aviso',
-      referencia_id: requestId
+      referencia_id: requestId,
+      criado_em: new Date().toISOString()
     });
   } catch (e) {
     console.error('Erro ao notificar paciente:', e.message);
@@ -310,6 +350,18 @@ const submitClientAnswers = async (req, res) => {
       .where({ id: request_id })
       .update({ status: 'concluido', respondido_em: new Date().toISOString() });
 
+    // Sincronizar status em medico_paciente_anamnese_customizada se houver
+    try {
+      const reqItem = await db('patient_anamnesis_requests').where({ id: request_id }).first();
+      if (reqItem) {
+        await db('medico_paciente_anamnese_customizada')
+          .where({ cliente_id: reqItem.cliente_id, medico_id: reqItem.medico_id })
+          .update({ status: 'concluido' });
+      }
+    } catch (e) {
+      console.error('Erro ao sincronizar status da custom anamnese:', e);
+    }
+
     await notificarMedico(request_id);
 
     return res.json({ message: 'Respostas salvas com sucesso' });
@@ -334,6 +386,8 @@ const getRequestAnswers = async (req, res) => {
 };
 
 module.exports = {
+  cloneCustomSections,
+  notificarPaciente,
   createPatientRequest,
   createCustomPatientRequest,
   getClientRequests,

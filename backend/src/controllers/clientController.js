@@ -6,18 +6,54 @@ const getClients = async (req, res) => {
   try {
     const db = require('../../knexfile');
     const isEmpresa = req.user && (req.user.eh_empresa || req.user.empresa_id);
+    const { medico_id, incluir_inativos } = req.query;
     
+    let baseClients = [];
     if (isEmpresa) {
       const empresaId = req.user.empresa_id || req.user.id;
       const relations = await db('cliente_empresas').where({ empresa_id: empresaId }).select();
       if (relations && relations.length > 0) {
         const clientIds = relations.map(r => r.cliente_id);
-        const clients = await db('clientes').whereIn('id', clientIds);
-        return res.json(clients);
+        baseClients = await db('clientes').whereIn('id', clientIds);
+      } else {
+        baseClients = await db('clientes').select('*');
+      }
+    } else {
+      baseClients = await db('clientes').select('*');
+    }
+
+    // Filtrar pacientes inativos por padrão (status !== 'inativo')
+    if (String(incluir_inativos) !== 'true') {
+      baseClients = baseClients.filter(c => c.status !== 'inativo');
+    }
+
+    // Resolver ID do profissional médico para filtragem de acesso de prontuário
+    let doctorIdToFilter = null;
+    if (medico_id) {
+      const docInput = parseInt(medico_id);
+      let doc = await db('profissionais').where({ id: docInput }).first();
+      if (!doc) {
+        doc = await db('profissionais').where({ usuario_id: docInput }).first();
+      }
+      if (doc) doctorIdToFilter = doc.id;
+    } else if (req.user && (req.user.tipo_profissional === 'medico' || req.user.tipo === 'medico')) {
+      let doc = await db('profissionais').where({ usuario_id: req.user.id }).first();
+      if (!doc && req.user.profissional_id) {
+        doc = await db('profissionais').where({ id: req.user.profissional_id }).first();
+      }
+      if (doc) doctorIdToFilter = doc.id;
+    }
+
+    if (doctorIdToFilter) {
+      const hasAccessTable = await db.schema.hasTable('paciente_medico_acessos');
+      if (hasAccessTable) {
+        const acessos = await db('paciente_medico_acessos').where({ medico_id: doctorIdToFilter }).select('cliente_id');
+        const allowedIds = new Set(acessos.map(a => a.cliente_id));
+        baseClients = baseClients.filter(c => allowedIds.has(c.id));
       }
     }
-    const clients = await db('clientes').select('*');
-    return res.json(clients);
+
+    return res.json(baseClients);
   } catch (err) {
     console.error('Erro em getClients:', err);
     return res.status(500).json({ error: 'Erro ao listar clientes' });
@@ -255,11 +291,48 @@ const updateClientPayment = async (req, res) => {
   }
 };
 
+const deleteClient = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const db = require('../../knexfile');
+    const clientId = parseInt(id);
+    const client = await db('clientes').where({ id: clientId }).first();
+    if (!client) {
+      return res.status(404).json({ error: 'Paciente não encontrado' });
+    }
+
+    // Apagar permissões de acesso
+    await db('paciente_medico_acessos').where({ cliente_id: clientId }).del().catch(() => {});
+    // Apagar vínculo com empresas
+    await db('cliente_empresas').where({ cliente_id: clientId }).del().catch(() => {});
+    // Apagar exames, receitas, bioimpedância, anamnese
+    await db('exames').where({ cliente_id: clientId }).del().catch(() => {});
+    await db('receitas').where({ cliente_id: clientId }).del().catch(() => {});
+    await db('bioimpedancia').where({ cliente_id: clientId }).del().catch(() => {});
+    await db('anamnese').where({ cliente_id: clientId }).del().catch(() => {});
+    await db('patient_anamnesis_requests').where({ cliente_id: clientId }).del().catch(() => {});
+
+    // Apagar o paciente da tabela clientes
+    await db('clientes').where({ id: clientId }).del();
+
+    // Se houver usuário associado, apagar o usuário
+    if (client.usuario_id) {
+      await db('usuarios').where({ id: client.usuario_id }).del().catch(() => {});
+    }
+
+    return res.json({ message: 'Paciente e todo o seu histórico foram excluídos permanentemente do sistema.' });
+  } catch (err) {
+    console.error('Erro ao excluir paciente:', err);
+    return res.status(500).json({ error: 'Erro ao excluir paciente do sistema' });
+  }
+};
+
 module.exports = {
   getClients,
   getClientById,
   registerClient,
   updateClient,
   toggleClientStatus,
-  updateClientPayment
+  updateClientPayment,
+  deleteClient
 };

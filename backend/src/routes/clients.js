@@ -6,7 +6,8 @@ const {
   registerClient, 
   updateClient,
   toggleClientStatus,
-  updateClientPayment
+  updateClientPayment,
+  deleteClient
 } = require('../controllers/clientController');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -19,5 +20,6 @@ router.get('/:id', authenticateToken, getClientById);
 router.put('/:id', authenticateToken, updateClient);
 router.put('/:id/toggle-status', authenticateToken, toggleClientStatus);
 router.put('/:id/payment-status', authenticateToken, updateClientPayment);
+router.delete('/:id', authenticateToken, deleteClient);
 
 module.exports = router;
