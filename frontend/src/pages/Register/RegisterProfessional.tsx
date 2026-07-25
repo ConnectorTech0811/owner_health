@@ -29,6 +29,7 @@ export const RegisterProfessional: React.FC = () => {
     cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '',
     email: '', celular: '',
     especialidade: '', numero_conselho: '', tipo_conselho: 'CRM',
+    valor_consulta: '150.00',
     bio: '',
     senha: '', confirmar_senha: '',
     aceite_lgpd: false,
@@ -260,6 +261,9 @@ export const RegisterProfessional: React.FC = () => {
                     <InputField label="Nº do Conselho *" id="numero_conselho" value={form.numero_conselho} onChange={v => setField('numero_conselho', v)} placeholder="000000/UF" />
                   </div>
                 </div>
+              </div>
+              <div>
+                <InputField label="Valor da Consulta (R$) *" id="valor_consulta" value={form.valor_consulta} onChange={v => setField('valor_consulta', v)} placeholder="150.00" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Mini Bio / Apresentação</label>

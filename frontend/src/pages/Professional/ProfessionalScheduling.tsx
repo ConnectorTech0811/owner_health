@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Plus, CheckCircle2, RefreshCcw, Lock, Unlock, AlertCircle, Users, ArrowLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, CheckCircle2, RefreshCcw, Lock, Unlock, AlertCircle, Users, ArrowLeft, Search } from 'lucide-react';
 import { AgendaCalendar } from '../../components/AgendaCalendar';
 import { API_URL } from '../../config';
 
@@ -65,6 +65,13 @@ export function ProfessionalScheduling() {
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
 
+  // Filtros da tela de seleção de médico
+  const [searchDoctorName, setSearchDoctorName] = useState('');
+  const [searchDoctorSpec, setSearchDoctorSpec] = useState('');
+  const [searchDoctorCrm, setSearchDoctorCrm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
   useEffect(() => {
     if (isSecretary || user?.eh_empresa || !user?.tipo_profissional) {
       const token = localStorage.getItem('token');
@@ -76,9 +83,6 @@ export function ProfessionalScheduling() {
         if (Array.isArray(data)) {
           const docList = data.filter((p: any) => p.tipo_profissional === 'medico' && p.ativo !== 0);
           setDoctors(docList);
-          if (docList.length > 0 && (selectedDoctorId === null || selectedDoctorId === 0)) {
-            setSelectedDoctorId(docList[0].id);
-          }
         }
       })
       .catch(console.error);
@@ -402,38 +406,158 @@ export function ProfessionalScheduling() {
   }
 
   if (isSecretary && selectedDoctorId === null) {
+    const filteredDoctors = doctors.filter(doc => {
+      const matchName = !searchDoctorName.trim() || doc.nome.toLowerCase().includes(searchDoctorName.toLowerCase().trim());
+      const matchSpec = !searchDoctorSpec || (doc.especialidade || 'Clínico Geral').toLowerCase().includes(searchDoctorSpec.toLowerCase());
+      const matchCrm = !searchDoctorCrm.trim() || (doc.numero_conselho && doc.numero_conselho.toLowerCase().includes(searchDoctorCrm.toLowerCase().trim()));
+      return matchName && matchSpec && matchCrm;
+    });
+
+    const totalPages = Math.ceil(filteredDoctors.length / itemsPerPage) || 1;
+    const paginatedDoctors = filteredDoctors.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     return (
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-6 pb-12">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Selecione o Médico</h1>
-          <p className="text-slate-500">Escolha um médico da clínica para gerenciar a agenda.</p>
+          <h1 className="text-2xl font-bold text-slate-800 mb-1">Selecione o Médico</h1>
+          <p className="text-slate-500 text-sm">Escolha um médico da clínica para visualizar e gerenciar sua agenda.</p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {doctors.map(doc => (
-            <div 
-              key={doc.id} 
-              onClick={() => setSelectedDoctorId(doc.id)}
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer flex flex-col items-center text-center gap-4 group"
-            >
-              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-                <Users className="w-8 h-8" />
+
+        {/* Filtros de Busca Avançados */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Busca por Nome por Aproximação */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Buscar por Nome do Médico</label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchDoctorName}
+                  onChange={e => { setSearchDoctorName(e.target.value); setCurrentPage(1); }}
+                  placeholder="Digite para buscar..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500"
+                />
               </div>
-              <div>
-                <h3 className="font-bold text-slate-800 text-lg">{doc.nome}</h3>
-                <p className="text-slate-500 text-sm">{doc.especialidade || 'Clínico Geral'} - CRM: {doc.crm}</p>
-              </div>
-              <button className="mt-2 text-sm font-semibold text-blue-600 bg-blue-50 px-4 py-2 rounded-full group-hover:bg-blue-600 group-hover:text-white transition">
-                Gerenciar Agenda
-              </button>
             </div>
-          ))}
-          {doctors.length === 0 && (
-            <div className="col-span-full p-8 text-center bg-slate-50 rounded-2xl border border-slate-200">
-              <p className="text-slate-500">Nenhum médico vinculado à sua clínica.</p>
+
+            {/* Filtro por Especialidade */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Especialidade</label>
+              <select
+                value={searchDoctorSpec}
+                onChange={e => { setSearchDoctorSpec(e.target.value); setCurrentPage(1); }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="">Todas as Especialidades</option>
+                <option value="Clínico Geral">Clínico Geral</option>
+                <option value="Cardiologia">Cardiologia</option>
+                <option value="Dermatologia">Dermatologia</option>
+                <option value="Endocrinologia">Endocrinologia</option>
+                <option value="Fisioterapia">Fisioterapia</option>
+                <option value="Gastroenterologia">Gastroenterologia</option>
+                <option value="Ginecologia">Ginecologia</option>
+                <option value="Neurologia">Neurologia</option>
+                <option value="Nutrição">Nutrição</option>
+                <option value="Oftalmologia">Oftalmologia</option>
+                <option value="Ortopedia">Ortopedia</option>
+                <option value="Pediatria">Pediatria</option>
+                <option value="Psicologia">Psicologia</option>
+                <option value="Psiquiatria">Psiquiatria</option>
+              </select>
+            </div>
+
+            {/* Filtro por CRM / Conselho */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">CRM / Conselho</label>
+              <input
+                type="text"
+                value={searchDoctorCrm}
+                onChange={e => { setSearchDoctorCrm(e.target.value); setCurrentPage(1); }}
+                placeholder="Ex: CRM 123456"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          {(searchDoctorName || searchDoctorSpec || searchDoctorCrm) && (
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={() => { setSearchDoctorName(''); setSearchDoctorSpec(''); setSearchDoctorCrm(''); setCurrentPage(1); }}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+              >
+                Limpar Filtros
+              </button>
             </div>
           )}
         </div>
+
+        {/* Grid de Cards de Médicos */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginatedDoctors.map(doc => {
+            const valorConsulta = doc.valor_consulta ? parseFloat(doc.valor_consulta) : 150;
+            return (
+              <div 
+                key={doc.id} 
+                onClick={() => setSelectedDoctorId(doc.id)}
+                className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-indigo-300 transition cursor-pointer flex flex-col items-center text-center gap-4 group relative overflow-hidden"
+              >
+                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center group-hover:scale-110 transition shadow-xs">
+                  <Users className="w-8 h-8" />
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-slate-800 text-lg">{doc.nome}</h3>
+                  <p className="text-slate-500 text-xs mt-0.5 font-medium">
+                    {doc.especialidade || 'Clínico Geral'} • {doc.numero_conselho || 'CRM: -'}
+                  </p>
+                  <div className="mt-2 inline-block bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-700 border border-slate-200">
+                    Valor da Consulta: <span className="text-indigo-600 font-extrabold">R$ {valorConsulta.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                </div>
+
+                <button className="mt-2 text-xs font-bold text-indigo-600 bg-indigo-50 px-5 py-2.5 rounded-full group-hover:bg-indigo-600 group-hover:text-white transition shadow-xs">
+                  Gerenciar Agenda
+                </button>
+              </div>
+            );
+          })}
+
+          {filteredDoctors.length === 0 && (
+            <div className="col-span-full p-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
+              <p className="text-sm font-bold text-slate-600">Nenhum médico encontrado com os filtros aplicados.</p>
+              <p className="text-xs text-slate-400 mt-1">Tente ajustar a busca por nome, especialidade ou CRM.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Pagtinação da Lista de Médicos */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-xs font-bold text-slate-500">
+              Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredDoctors.length)} de {filteredDoctors.length} médicos
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition cursor-pointer"
+              >
+                Anterior
+              </button>
+              <span className="text-xs font-extrabold text-slate-700 px-2">
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition cursor-pointer"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -79,7 +79,7 @@ export const ClientScheduling: React.FC = () => {
         cep: p.endereco?.match(/CEP: (\d{5}-\d{3})/) ? p.endereco.match(/CEP: (\d{5}-\d{3})/)[1] : '00000-000',
         cidade: p.endereco ? p.endereco.split(' - ')[0].split(', ').pop() : 'Desconhecida',
         estado: 'SP',
-        preco: 150,
+        preco: p.valor_consulta ? parseFloat(p.valor_consulta) : 150,
         celular: p.celular || ''
       })) : [];
       

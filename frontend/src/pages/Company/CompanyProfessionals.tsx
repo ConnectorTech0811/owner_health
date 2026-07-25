@@ -41,6 +41,7 @@ export const CompanyProfessionals: React.FC = () => {
     email: '', celular: '',
     tipo_profissional: 'medico', // medico, secretario, administrativo
     especialidade: 'Clínico Geral', tipo_conselho: 'CRM', numero_conselho: '',
+    valor_consulta: '150.00',
     senha: '', confirmar_senha: ''
   });
 
@@ -59,6 +60,7 @@ export const CompanyProfessionals: React.FC = () => {
       email: '', celular: '',
       tipo_profissional: 'medico',
       especialidade: 'Clínico Geral', tipo_conselho: 'CRM', numero_conselho: '',
+      valor_consulta: '150.00',
       senha: '', confirmar_senha: ''
     });
     setError('');
@@ -80,17 +82,31 @@ export const CompanyProfessionals: React.FC = () => {
       }
     }
     
+    let finalLogradouro = prof.logradouro || '';
+    if (!finalLogradouro && prof.endereco) {
+      finalLogradouro = prof.endereco.split(',')[0] || '';
+    } else if (finalLogradouro.includes(',') && finalLogradouro.includes('CEP:')) {
+      finalLogradouro = finalLogradouro.split(',')[0] || '';
+    }
+    
     setForm({
       nome: prof.nome || '',
       cpf: prof.cpf || '',
       data_nascimento: prof.data_nascimento ? prof.data_nascimento.split('T')[0] : '',
-      cep: '', logradouro: prof.endereco || '', numero: '', complemento: '', bairro: '', cidade: '', estado: '',
+      cep: prof.cep || '',
+      logradouro: finalLogradouro,
+      numero: prof.numero || '',
+      complemento: prof.complemento || '',
+      bairro: prof.bairro || '',
+      cidade: prof.cidade || '',
+      estado: prof.estado || '',
       email: prof.email || '',
       celular: prof.celular || '',
       tipo_profissional: prof.tipo_profissional || 'medico',
       especialidade: prof.especialidade || 'Clínico Geral',
       tipo_conselho: conselho,
       numero_conselho: num_conselho,
+      valor_consulta: prof.valor_consulta ? String(prof.valor_consulta) : '150.00',
       senha: '', confirmar_senha: ''
     });
     setError('');
@@ -248,6 +264,7 @@ export const CompanyProfessionals: React.FC = () => {
         tipo_profissional: form.tipo_profissional,
         especialidade: form.tipo_profissional === 'medico' ? form.especialidade : null,
         numero_conselho: form.tipo_profissional === 'medico' ? `${form.tipo_conselho} ${form.numero_conselho}` : null,
+        valor_consulta: form.tipo_profissional === 'medico' ? parseFloat(form.valor_consulta || '150') : 150,
         email: form.email,
         celular: form.celular,
         senha: form.senha,
@@ -280,6 +297,7 @@ export const CompanyProfessionals: React.FC = () => {
         email: '', celular: '',
         tipo_profissional: 'medico',
         especialidade: 'Clínico Geral', tipo_conselho: 'CRM', numero_conselho: '',
+        valor_consulta: '150.00',
         senha: '', confirmar_senha: ''
       });
       fetchProfessionals();
@@ -657,35 +675,45 @@ export const CompanyProfessionals: React.FC = () => {
 
               {/* Campos específicos do Médico */}
               {form.tipo_profissional === 'medico' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl items-end">
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">Especialidade *</label>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 whitespace-nowrap">Especialidade *</label>
                     <select
                       value={form.especialidade}
                       onChange={e => setForm({...form, especialidade: e.target.value})}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-indigo-500 h-9"
                     >
                       {ESPECIALIDADES.map(e => <option key={e} value={e}>{e}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">Conselho *</label>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 whitespace-nowrap">Conselho *</label>
                     <select
                       value={form.tipo_conselho}
                       onChange={e => setForm({...form, tipo_conselho: e.target.value})}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-indigo-500 h-9"
                     >
                       {CONSELHOS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">Nº Registro Conselho *</label>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 truncate" title="Nº do Conselho *">Nº do Conselho *</label>
                     <input
                       type="text" required
                       value={form.numero_conselho}
                       onChange={e => setForm({...form, numero_conselho: e.target.value})}
                       placeholder="123456/SP"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-indigo-500 h-9"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 truncate" title="Valor Consulta (R$) *">Valor Consulta (R$) *</label>
+                    <input
+                      type="number" step="0.01" min="0" required
+                      value={form.valor_consulta}
+                      onChange={e => setForm({...form, valor_consulta: e.target.value})}
+                      placeholder="150.00"
+                      className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold text-indigo-700 focus:outline-none focus:border-indigo-500 h-9"
                     />
                   </div>
                 </div>

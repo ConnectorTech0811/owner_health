@@ -162,10 +162,18 @@ const registerProfessional = async (req, res) => {
       cpf,
       data_nascimento,
       endereco,
+      cep: cep || '',
+      logradouro: logradouro || '',
+      numero: numero || '',
+      complemento: complemento || '',
+      bairro: bairro || '',
+      cidade: cidade || '',
+      estado: estado || '',
       numero_conselho,
       tipo_profissional: tipo_profissional || null,
       email,
       celular,
+      valor_consulta: req.body.valor_consulta ? parseFloat(req.body.valor_consulta) : 150.00,
       ativo: true
     });
 
@@ -229,10 +237,18 @@ const updateProfessional = async (req, res) => {
       cpf: cpf || prof.cpf,
       data_nascimento: data_nascimento || prof.data_nascimento,
       endereco: endereco || prof.endereco,
+      cep: cep !== undefined ? cep : prof.cep,
+      logradouro: logradouro !== undefined ? logradouro : prof.logradouro,
+      numero: numero !== undefined ? numero : prof.numero,
+      complemento: complemento !== undefined ? complemento : prof.complemento,
+      bairro: bairro !== undefined ? bairro : prof.bairro,
+      cidade: cidade !== undefined ? cidade : prof.cidade,
+      estado: estado !== undefined ? estado : prof.estado,
       numero_conselho: numero_conselho !== undefined ? numero_conselho : prof.numero_conselho,
       tipo_profissional: tipo_profissional || prof.tipo_profissional,
       email: email || prof.email,
-      celular: celular || prof.celular
+      celular: celular || prof.celular,
+      valor_consulta: req.body.valor_consulta !== undefined ? parseFloat(req.body.valor_consulta) : prof.valor_consulta
     };
 
     await dbHelper.query('profissionais', 'update', { id: parseInt(id) }, updates);
