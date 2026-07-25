@@ -46,6 +46,22 @@ export const AuditLogs: React.FC = () => {
     }
   };
 
+  const formatJsonPayload = (val: any) => {
+    if (!val) return '';
+    try {
+      if (typeof val === 'object') {
+        return JSON.stringify(val, null, 2);
+      }
+      if (typeof val === 'string') {
+        const parsed = JSON.parse(val);
+        return JSON.stringify(parsed, null, 2);
+      }
+    } catch {
+      return String(val);
+    }
+    return String(val);
+  };
+
   const getActionColor = (action: string) => {
     switch(action.toUpperCase()) {
       case 'INSERT': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -183,7 +199,7 @@ export const AuditLogs: React.FC = () => {
                                 <div>
                                   <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest block mb-1">Antes</span>
                                   <pre className="text-[10px] text-slate-300 font-mono leading-relaxed">
-                                    {JSON.stringify(JSON.parse(log.old_values), null, 2)}
+                                    {formatJsonPayload(log.old_values)}
                                   </pre>
                                 </div>
                               )}
@@ -194,7 +210,7 @@ export const AuditLogs: React.FC = () => {
                                 <div>
                                   <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Depois</span>
                                   <pre className="text-[10px] text-slate-300 font-mono leading-relaxed">
-                                    {JSON.stringify(JSON.parse(log.new_values), null, 2)}
+                                    {formatJsonPayload(log.new_values)}
                                   </pre>
                                 </div>
                               )}
