@@ -182,7 +182,7 @@ export const RegisterCompany: React.FC = () => {
                 <F label="Nome Fantasia *" id="nome_fantasia" value={form.nome_fantasia} onChange={v => sf('nome_fantasia', v)}
                   icon={<Building2 className="w-4 h-4" />} placeholder="Nome da Clínica" color="violet" />
                 <F label="CNPJ *" id="cnpj" value={form.cnpj} isValid={form.cnpj ? isValidCNPJ(form.cnpj) : null} onChange={v => sf('cnpj', formatCNPJ(v))}
-                  icon={<FileText className="w-4 h-4" />} placeholder="00.000.000/0000-00" color="violet" />
+                  icon={<FileText className="w-4 h-4" />} placeholder="00.000.000/0000-00 ou 19.JA2.KO8/Z001-51" color="violet" />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

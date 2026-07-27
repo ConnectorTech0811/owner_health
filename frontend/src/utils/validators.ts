@@ -13,40 +13,43 @@ export const isValidCPF = (cpf: string): boolean => {
 
 export const isValidCNPJ = (cnpj: string): boolean => {
   if (!cnpj) return false;
-  
+
   const isString = typeof cnpj === 'string';
   const validTypes = isString || Number.isInteger(cnpj) || Array.isArray(cnpj);
-  
+
   if (!validTypes) return false;
-  
-  const numbers = cnpj.toString().match(/\d/g)?.map(Number);
-  
-  if (!numbers || numbers.length !== 14) return false;
-  
-  const items = [...new Set(numbers)];
-  if (items.length === 1) return false;
-  
-  const calc = (x: number) => {
-    const slice = numbers.slice(0, x);
-    let factor = x - 7;
+
+  const cleaned = cnpj.toString().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+  if (cleaned.length !== 14) return false;
+
+  // Rejeita sequências de 14 caracteres idênticos
+  if (/^(.)\1{13}$/.test(cleaned)) return false;
+
+  // Os 2 últimos dígitos (DVs) devem ser estritamente numéricos (0-9)
+  if (!/^\d{2}$/.test(cleaned.slice(12))) return false;
+
+  // Converte caracteres para valor ASCII - 48 (A=17 .. Z=42, '0'..'9'=0..9)
+  const values = cleaned.split('').map(char => char.charCodeAt(0) - 48);
+
+  const calcDV = (sliceLength: number, multipliers: number[]): number => {
     let sum = 0;
-    
-    for (let i = x; i >= 1; i--) {
-      const n = slice[x - i];
-      sum += n * factor--;
-      if (factor < 2) factor = 9;
+    for (let i = 0; i < sliceLength; i++) {
+      sum += values[i] * multipliers[i];
     }
-    
-    const result = 11 - (sum % 11);
-    return result > 9 ? 0 : result;
+    const resto = sum % 11;
+    const dv = 11 - resto;
+    return dv >= 10 ? 0 : dv;
   };
-  
-  const digits = numbers.slice(12);
-  const digit0 = calc(12);
-  if (digit0 !== digits[0]) return false;
-  
-  const digit1 = calc(13);
-  return digit1 === digits[1];
+
+  const multDV1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const multDV2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+
+  const dv1 = calcDV(12, multDV1);
+  if (dv1 !== values[12]) return false;
+
+  const dv2 = calcDV(13, multDV2);
+  return dv2 === values[13];
 };
 
 export const isAdult = (dateString: string): boolean => {
@@ -71,13 +74,14 @@ export const formatCPF = (value: string): string => {
 };
 
 export const formatCNPJ = (value: string): string => {
-  return value
-    .replace(/\D/g, '')
-    .replace(/^(\d{2})(\d)/, '$1.$2')
-    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-    .replace(/\.(\d{3})(\d)/, '.$1/$2')
-    .replace(/(\d{4})(\d)/, '$1-$2')
-    .slice(0, 18);
+  if (!value) return '';
+  const clean = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 14);
+
+  return clean
+    .replace(/^([A-Z0-9]{2})([A-Z0-9])/, '$1.$2')
+    .replace(/^([A-Z0-9]{2})\.([A-Z0-9]{3})([A-Z0-9])/, '$1.$2.$3')
+    .replace(/\.([A-Z0-9]{3})([A-Z0-9])/, '.$1/$2')
+    .replace(/\/([A-Z0-9]{4})([0-9])/, '/$1-$2');
 };
 
 export const formatCelular = (value: string): string => {

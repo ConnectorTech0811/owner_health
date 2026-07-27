@@ -1,5 +1,6 @@
 const dbHelper = require('../utils/dbHelper');
 const bcrypt = require('bcryptjs');
+const { isValidCNPJ } = require('../utils/validators');
 const db = require('../../knexfile');
 
 const getCompanies = async (req, res) => {
@@ -86,6 +87,10 @@ const registerCompany = async (req, res) => {
 
   if (!razao_social || !nome_fantasia || !cnpj || !nome_responsavel || !cpf_responsavel || !cargo_responsavel || !email || !senha) {
     return res.status(400).json({ error: 'Preencha todos os campos obrigatórios' });
+  }
+
+  if (!isValidCNPJ(cnpj)) {
+    return res.status(400).json({ error: 'CNPJ inválido' });
   }
 
   try {

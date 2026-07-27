@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, CreditCard, Plus, X, User, Mail, Lock, Phone, Save, Eye as EyeIcon } from 'lucide-react';
 import { API_URL } from '../../config';
+import { formatCNPJ, isValidCNPJ } from '../../utils/validators';
 
 export const CompanyList: React.FC = () => {
   const [companies, setCompanies] = useState<any[]>([]);
@@ -69,6 +70,12 @@ export const CompanyList: React.FC = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (!isValidCNPJ(form.cnpj)) {
+      setError('CNPJ inválido. Verifique o número digitado.');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -332,9 +339,9 @@ export const CompanyList: React.FC = () => {
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">CNPJ</label>
                   <input
-                    type="text" required placeholder="00.000.000/0000-00"
+                    type="text" required placeholder="00.000.000/0000-00 ou 19.JA2.KO8/Z001-51"
                     value={form.cnpj}
-                    onChange={e => setForm({...form, cnpj: e.target.value})}
+                    onChange={e => setForm({...form, cnpj: formatCNPJ(e.target.value)})}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-primary-400"
                   />
                 </div>
