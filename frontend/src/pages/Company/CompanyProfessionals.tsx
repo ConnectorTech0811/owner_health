@@ -5,6 +5,7 @@ import {
   Loader2, Plus, Trash2, Search, ToggleLeft, ToggleRight, Pencil
 } from 'lucide-react';
 import { API_URL } from '../../config';
+import { formatRoleName } from '../../utils/genderHelper';
 
 const ESPECIALIDADES = [
   'Clínico Geral', 'Cardiologia', 'Dermatologia', 'Endocrinologia', 'Fisioterapia',
@@ -501,11 +502,11 @@ export const CompanyProfessionals: React.FC = () => {
                         <span className={`text-[10px] font-black uppercase self-start px-2 py-0.5 rounded ${
                           prof.tipo_profissional === 'medico'
                             ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                            : prof.tipo_profissional === 'secretario'
+                            : (prof.tipo_profissional === 'secretario' || prof.tipo_profissional === 'secretaria')
                             ? 'bg-teal-50 text-teal-700 border border-teal-100'
                             : 'bg-slate-100 text-slate-700 border border-slate-200'
                         }`}>
-                          {prof.tipo_profissional === 'medico' ? 'Médico' : prof.tipo_profissional === 'secretario' ? 'Secretário' : 'Administrativo'}
+                          {formatRoleName(prof.tipo_profissional, prof.nome)}
                         </span>
                         {prof.numero_conselho && (
                           <span className="text-[10px] text-slate-400 font-semibold mt-1">

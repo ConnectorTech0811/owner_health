@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { ProfileModal } from './ProfileModal';
 import { NotificationBell } from './NotificationBell';
+import { formatRoleName } from '../utils/genderHelper';
 
 interface ProfessionalLayoutProps {
   children: React.ReactNode;
@@ -83,13 +84,6 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
 
   const menuItems = buildMenu();
 
-  const roleLabelMap: Record<string, string> = {
-    medico: 'Médico',
-    secretario: 'Secretário(a)',
-    secretaria: 'Secretário(a)',
-    administrativo: 'Administrativo',
-  };
-
   const NavItem = ({ item, onClick }: { item: MenuItem; onClick?: () => void }) => {
     const Icon = item.icon;
     const isActive = location.pathname === item.path;
@@ -132,7 +126,7 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
           <div className="truncate flex-1">
             <p className="text-xs font-bold text-slate-200 truncate">{user.name || user.email}</p>
             <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mt-0.5">
-              {roleLabelMap[tipo] || tipo}
+              {formatRoleName(tipo, user.name || user.nome || user.email)}
             </p>
           </div>
         </button>
@@ -189,7 +183,7 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-slate-500">Perfil: </span>
               <span className="text-xs font-black bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full capitalize">
-                {roleLabelMap[tipo] || tipo}
+                {formatRoleName(tipo, user.name || user.nome || user.email)}
               </span>
             </div>
           </div>

@@ -323,23 +323,30 @@ export const ClientAnamnesis: React.FC = () => {
   };
 
   // Helper: dado uma pergunta condicional, retorna qual resposta ativa ela
-  const getParentOptionOf = (q: Question, allQuestions: Question[]): { questionId: number; optionTexto: string } | null => {
+  const getParentOptionOf = (q: Question, allQuestions: Question[]): { questionId: number; optionId: number | string; optionTexto: string } | null => {
     if (!q.parent_option_id) return null;
     for (const other of allQuestions) {
-      const found = (other.options || []).find(o => o.id === q.parent_option_id);
-      if (found) return { questionId: other.id, optionTexto: found.texto };
+      const found = (other.options || []).find(o => String(o.id) === String(q.parent_option_id));
+      if (found) return { questionId: other.id, optionId: found.id, optionTexto: found.texto };
     }
     return null;
   };
 
+  const isParentSelected = (q: Question, sectionQs: Question[]): boolean => {
+    if (!q.parent_option_id) return true;
+    const parentOpt = getParentOptionOf(q, sectionQs);
+    if (!parentOpt) return true;
+    const ans = answers[parentOpt.questionId];
+    if (!ans) return false;
+    if (Array.isArray(ans)) {
+      return ans.includes(parentOpt.optionTexto) || ans.some(v => String(v) === String(parentOpt.optionId));
+    }
+    return ans === parentOpt.optionTexto || String(ans) === String(parentOpt.optionId);
+  };
+
   // Filtra apenas perguntas visíveis (condicionais que devem aparecer)
   const getVisibleQuestions = (sectionQs: Question[]): Question[] => {
-    return sectionQs.filter(q => {
-      if (!q.parent_option_id) return true;
-      const parentOpt = getParentOptionOf(q, sectionQs);
-      if (!parentOpt) return true;
-      return answers[parentOpt.questionId] === parentOpt.optionTexto;
-    });
+    return sectionQs.filter(q => isParentSelected(q, sectionQs));
   };
 
   const validateSection = (sectionIdx: number): boolean => {
@@ -348,10 +355,7 @@ export const ClientAnamnesis: React.FC = () => {
     let valid = true;
     for (const q of section.questions) {
       // Pula perguntas condicionais cujo pai não está selecionado
-      if (q.parent_option_id != null) {
-        const parentOpt = getParentOptionOf(q, section.questions);
-        if (parentOpt && answers[parentOpt.questionId] !== parentOpt.optionTexto) continue;
-      }
+      if (!isParentSelected(q, section.questions)) continue;
       if (q.obrigatoria) {
         const val = answers[q.id];
         const isEmpty = !val || (Array.isArray(val) ? val.length === 0 : val.trim() === '');

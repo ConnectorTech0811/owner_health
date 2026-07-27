@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save, Loader2, Check } from 'lucide-react';
+import { formatRoleName } from '../utils/genderHelper';
 
 interface ProfileModalProps {
   user: any;
@@ -8,7 +9,7 @@ interface ProfileModalProps {
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ user, onClose, tipoDisplay }) => {
-  const [nome, setNome] = useState(user.name || '');
+  const [nome, setNome] = useState(user.name || user.nome || '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -29,7 +30,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ user, onClose, tipoD
     }
   };
 
-  const tipoLabel = tipoDisplay || user.tipo_profissional || 'Admin';
+  const tipoLabel = tipoDisplay || formatRoleName(user.tipo_profissional || user.tipo, user.name || user.nome || nome);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">

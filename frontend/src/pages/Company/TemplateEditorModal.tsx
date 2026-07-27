@@ -179,19 +179,32 @@ export const TemplateEditorModal: React.FC<Props> = ({ template, onClose, onSave
               <h4 className="text-sm font-bold text-slate-800">{q.texto}</h4>
               
               {/* Lógica condicional preview */}
-              {(q.tipo === 'radio' || q.tipo === 'select') && q.options && (
-                <div className="mt-4 space-y-2 pl-4 border-l-2 border-slate-100">
+              {(q.tipo === 'radio' || q.tipo === 'select' || q.tipo === 'checkbox') && q.options && (
+                <div className="mt-4 space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{qIdx + 1} - Pergunta do formulário</p>
                   {q.options.map((opt, i) => {
-                    const hasStep = sections[sIdx].questions?.some(child => String(child.parent_option_id) === String(opt.id));
+                    const childQuestions = (sections[sIdx].questions || []).filter(child => String(child.parent_option_id) === String(opt.id));
+                    const stepNum = `${qIdx + 1}.${i + 1}`;
                     return (
-                      <div key={i} className="flex items-center justify-between py-1.5 group/opt">
-                        <span className="text-xs text-slate-600">{opt.texto}</span>
-                        <button
-                          onClick={() => handleAddQuestion(sIdx, opt.id)}
-                          className={`text-[10px] font-bold px-2 py-1 rounded-md transition ${hasStep ? 'text-emerald-600 bg-emerald-50' : 'text-violet-600 hover:bg-violet-50 opacity-0 group-hover/opt:opacity-100'}`}
-                        >
-                          {hasStep ? '✓ Step Vinculado' : '+ Step (Lógica)'}
-                        </button>
+                      <div key={i} className="space-y-1.5 p-2 rounded-lg bg-white border border-slate-150">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-slate-700">{opt.texto}</span>
+                          <button
+                            onClick={() => handleAddQuestion(sIdx, opt.id)}
+                            className="text-[10px] font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2 py-0.5 rounded-md transition flex items-center gap-1 cursor-pointer"
+                          >
+                            + {stepNum} Pergunta seguinte
+                          </button>
+                        </div>
+                        {childQuestions.length > 0 && (
+                          <div className="pl-3 border-l-2 border-violet-400 space-y-1 mt-1">
+                            {childQuestions.map(c => (
+                              <p key={c.id} className="text-[10px] font-bold text-violet-700 flex items-center gap-1">
+                                ↳ {c.texto}
+                              </p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

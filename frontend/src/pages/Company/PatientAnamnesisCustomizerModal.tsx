@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Trash2, Plus, Sparkles, Edit3, Check } from 'lucide-react';
+import { X, Save, Trash2, Plus, Sparkles, Edit3 } from 'lucide-react';
 import { API_URL } from '../../config';
 import { QuestionModal } from '../../components/QuestionModal';
 import type { Question, Section, QuestionType } from './CompanyAnamnesisConfig';
@@ -214,20 +214,17 @@ export const PatientAnamnesisCustomizerModal: React.FC<Props> = ({ companyId, pa
                       (() => {
                         const secQuestions = sec.questions || [];
                         const topLevel = secQuestions.filter(q => !q.parent_option_id);
-                        const renderConfigQ = (q: Question, qIdx: number, level: number = 0) => {
-                          const activeChildren = secQuestions.filter(c => 
-                            c.parent_option_id != null && q.options?.some(o => o.id != null && String(c.parent_option_id) === String(o.id))
-                          );
 
+                        const renderConfigQ = (q: Question, qIdx: number, level: number = 0, qNumPrefix: string = '') => {
                           return (
-                            <div key={q.id || qIdx} className={`${level > 0 ? 'ml-8 mt-3 relative border-l-2 border-violet-200 pl-6' : ''}`}>
-                              <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:border-violet-200 transition space-y-3">
+                            <div key={q.id || qIdx} className={`${level > 0 ? 'ml-4 mt-2' : ''}`}>
+                              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:border-violet-300 transition space-y-3 shadow-2xs">
                                 <div className="flex items-start justify-between gap-3">
                                   <div>
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <p className="text-xs font-black text-slate-800">{q.texto}</p>
                                       {q.obrigatoria && <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">* Obrigatória</span>}
-                                      {level > 0 && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">Step Vinculado</span>}
+                                      {level > 0 && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">↳ Step Condicional ({qNumPrefix})</span>}
                                     </div>
                                     <span className="inline-block text-[9px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full mt-1">
                                       {QUESTION_TYPE_MAP[q.tipo]?.label || q.tipo}
@@ -252,26 +249,39 @@ export const PatientAnamnesisCustomizerModal: React.FC<Props> = ({ companyId, pa
                                   </div>
                                 </div>
 
-                                {/* Opções & Botão + Step (Lógica) */}
+                                {/* Alternativas e Sub-fluxos condicionais por alternativa */}
                                 {needsOptions(q.tipo) && q.options && q.options.length > 0 && (
-                                  <div className="mt-2 space-y-2 bg-white p-3 rounded-xl border border-slate-200">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Opções de Resposta & Lógica Condicional</p>
+                                  <div className="mt-3 space-y-2 bg-white p-3.5 rounded-xl border border-slate-200">
+                                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                                      {qNumPrefix || '1'} - Pergunta do formulário
+                                    </p>
                                     {q.options.map((o, oIdx) => {
-                                      const hasChild = secQuestions.some(c => c.parent_option_id != null && String(c.parent_option_id) === String(o.id));
+                                      const childQuestions = secQuestions.filter(c => c.parent_option_id != null && String(c.parent_option_id) === String(o.id));
+                                      const stepNum = `${qNumPrefix || '1'}.${oIdx + 1}`;
+
                                       return (
-                                        <div key={o.id || oIdx} className="flex items-center justify-between gap-2 p-2 rounded-lg border border-slate-100 bg-slate-50">
-                                          <span className="text-xs font-semibold text-slate-700">{o.texto}</span>
-                                          {!hasChild ? (
+                                        <div key={o.id || oIdx} className="space-y-2 border border-slate-150 rounded-xl p-3 bg-slate-50/80">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className="w-2 h-2 rounded-full bg-violet-400"></span>
+                                              <span className="text-xs font-bold text-slate-700">{o.texto}</span>
+                                            </div>
                                             <button
                                               onClick={() => setModalQuestion({ sectionIdx: sIdx, question: null, parentOptionId: o.id })}
                                               className="text-[10px] font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
                                             >
-                                              <Plus className="w-3 h-3" /> + Step (Lógica)
+                                              <Plus className="w-3 h-3 text-violet-600" /> {stepNum} Pergunta seguinte
                                             </button>
-                                          ) : (
-                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                              <Check className="w-3 h-3" /> Step Vinculado
-                                            </span>
+                                          </div>
+
+                                          {/* Sub-perguntas especificamente vinculadas a esta opção */}
+                                          {childQuestions.length > 0 && (
+                                            <div className="mt-2 space-y-2 pl-3 border-l-2 border-violet-400">
+                                              <p className="text-[9px] font-black text-violet-700 uppercase tracking-wider flex items-center gap-1">
+                                                <span>↳ SE ESCOLHER "{o.texto.toUpperCase()}", RESPONDER TAMBÉM:</span>
+                                              </p>
+                                              {childQuestions.map(child => renderConfigQ(child, secQuestions.indexOf(child), level + 1, stepNum))}
+                                            </div>
                                           )}
                                         </div>
                                       );
@@ -279,12 +289,10 @@ export const PatientAnamnesisCustomizerModal: React.FC<Props> = ({ companyId, pa
                                   </div>
                                 )}
                               </div>
-
-                              {activeChildren.map(c => renderConfigQ(c, secQuestions.indexOf(c), level + 1))}
                             </div>
                           );
                         };
-                        return topLevel.map(q => renderConfigQ(q, secQuestions.indexOf(q)));
+                        return topLevel.map((q, tIdx) => renderConfigQ(q, secQuestions.indexOf(q), 0, String(tIdx + 1)));
                       })()
                     )}
                   </div>
