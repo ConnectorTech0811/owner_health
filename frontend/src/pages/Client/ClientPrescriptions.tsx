@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pill, Trash2, Download, X, Loader2, Upload, FileText, Edit, Eye, Minus } from 'lucide-react';
+import { Plus, Pill, Trash2, Download, X, Loader2, Upload, FileText, Edit, Eye, ShieldCheck, Clock } from 'lucide-react';
 import { API_URL } from '../../config';
 
 interface Prescription {
   id: number; medico?: string; data: string;
   observacoes?: string; medicamentos?: string; arquivo_url?: string; criado_em: string;
+  hash_sha256?: string; tipo?: string;
 }
 
 export const ClientPrescriptions: React.FC = () => {
@@ -16,11 +17,11 @@ export const ClientPrescriptions: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [viewingFile, setViewingFile] = useState<{url: string, type: string} | null>(null);
 
-  // AI OCR simulator states
+  // AI OCR scanner states
   const [ocrLoading, setOcrLoading] = useState(false);
   const [extractedOcrText, setExtractedOcrText] = useState('');
 
-  const clienteId = localStorage.getItem('activeProfileId');
+  const clienteId = localStorage.getItem('activeProfileId') || '1';
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
@@ -38,7 +39,7 @@ export const ClientPrescriptions: React.FC = () => {
     } catch { setList([]); } finally { setLoading(false); }
   };
 
-  // Leitura Real de Arquivo e IA (OCR)
+  // Upload & Leitura de Arquivos de Receita com IA OCR
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -65,11 +66,11 @@ export const ClientPrescriptions: React.FC = () => {
       setForm(f => ({
         ...f,
         arquivo_url: fileUrl,
-        observacoes: f.observacoes || (realExtractedText ? `[Leitura IA do Arquivo]: ${realExtractedText.slice(0, 200)}...` : `[Arquivo Anexado]: ${file.name}`)
+        observacoes: f.observacoes || (realExtractedText ? `[Digitalização por IA]: ${realExtractedText.slice(0, 200)}...` : `[Anexo]: ${file.name}`)
       }));
 
       setExtractedOcrText(
-        `📄 LEITURA PROCESSADA DO ARQUIVO REAL (${file.name})\n----------------------------------------\n${realExtractedText}\n----------------------------------------\nURL Registrada: ${fileUrl}`
+        `📄 LEITURA COMPUTACIONAL PROCESSADA (${file.name})\n----------------------------------------\n${realExtractedText}\n----------------------------------------\nURL: ${fileUrl}`
       );
     } catch (err: any) {
       alert(err.message || 'Erro ao realizar upload do arquivo.');
@@ -89,7 +90,7 @@ export const ClientPrescriptions: React.FC = () => {
       const res = await fetch(url, {
         method: editingId ? 'PUT' : 'POST', headers, body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Erro ao salvar');
+      if (!res.ok) throw new Error('Erro ao salvar receita');
       setShowModal(false);
       setEditingId(null);
       setForm({ medico: '', data: new Date().toISOString().split('T')[0], observacoes: '', arquivo_url: '' });
@@ -102,7 +103,7 @@ export const ClientPrescriptions: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Remover esta receita?')) return;
+    if (!confirm('Remover esta receita do seu histórico?')) return;
     await fetch(`${API_URL}/api/prescriptions/${id}`, { method: 'DELETE', headers });
     fetchList();
   };
@@ -111,8 +112,8 @@ export const ClientPrescriptions: React.FC = () => {
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-800">Receitas Médicas</h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium">Cadastre e arquive suas receitas médicas. A IA pode ler o arquivo e digitar os medicamentos para você.</p>
+          <h1 className="text-2xl font-black text-slate-800">Minhas Receitas & Documentos Médicos</h1>
+          <p className="text-sm text-slate-500 mt-1 font-medium">Consulte suas prescrições ativas, horários de tomada, receituários assinados com ICP-Brasil e digitalizações por IA.</p>
         </div>
         <button onClick={() => {
           setForm({ medico: '', data: new Date().toISOString().split('T')[0], observacoes: '', arquivo_url: '' });
@@ -122,7 +123,7 @@ export const ClientPrescriptions: React.FC = () => {
           setShowModal(true);
         }} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5"
           style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
-          <Plus className="w-4 h-4" /> Nova Receita
+          <Plus className="w-4 h-4" /> Adicionar / Escanear Receita
         </button>
       </div>
 
@@ -133,10 +134,10 @@ export const ClientPrescriptions: React.FC = () => {
           <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Pill className="w-8 h-8 text-indigo-400" />
           </div>
-          <h3 className="font-black text-slate-700 mb-2">Nenhuma receita cadastrada</h3>
-          <p className="text-sm text-slate-400 mb-6">Mantenha o histórico das suas prescrições médicas digitalizadas</p>
-          <button onClick={() => setShowModal(true)} className="px-6 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
-            Adicionar Receita
+          <h3 className="font-black text-slate-700 mb-2">Nenhuma receita registrada</h3>
+          <p className="text-sm text-slate-400 mb-6">Mantenha seu histórico de tratamentos organizado e digitalizado no seu aplicativo.</p>
+          <button onClick={() => setShowModal(true)} className="px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-md" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
+            Cadastrar Minha Primeira Receita
           </button>
         </div>
       ) : (
@@ -155,7 +156,7 @@ export const ClientPrescriptions: React.FC = () => {
                       catch { parsed = (item.medicamentos || '').split('\n').filter(Boolean); }
                       if (parsed.length === 0) parsed = [''];
                       
-                      setForm({ medico: item.medico || '', data: item.data.split('T')[0], observacoes: item.observacoes || '', arquivo_url: item.arquivo_url || '' });
+                      setForm({ medico: item.medico || '', data: item.data ? item.data.split('T')[0] : '', observacoes: item.observacoes || '', arquivo_url: item.arquivo_url || '' });
                       setMedicamentosList(parsed);
                       setEditingId(item.id);
                       setShowModal(true);
@@ -167,35 +168,46 @@ export const ClientPrescriptions: React.FC = () => {
                     </button>
                   </div>
                 </div>
-                <p className="font-black text-slate-800 text-sm mb-1">
-                  {new Date(item.data).toLocaleDateString('pt-BR')}
-                </p>
-                {item.medico && <p className="text-xs text-slate-500 font-medium">Dr(a). {item.medico}</p>}
+
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-black text-slate-800 text-sm">
+                    {new Date(item.data || item.criado_em).toLocaleDateString('pt-BR')}
+                  </p>
+                  {item.hash_sha256 && (
+                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> Assinada ICP
+                    </span>
+                  )}
+                </div>
+
+                {item.medico && <p className="text-xs text-slate-500 font-semibold">Dr(a). {item.medico}</p>}
+
                 {item.medicamentos && (
-                  <div className="mt-2.5 space-y-1.5">
-                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">Medicamentos Extraídos</p>
+                  <div className="mt-3 space-y-1.5">
+                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1">Medicamentos Prescritos</p>
                     {(() => {
-                      let parsed = [];
+                      let parsed: any[] = [];
                       try {
                         parsed = JSON.parse(item.medicamentos);
                       } catch {
                         parsed = item.medicamentos.split('\n').filter(Boolean);
                       }
                       return Array.isArray(parsed) ? parsed.map((m, i) => (
-                        <div key={i} className="bg-indigo-50/50 rounded-lg p-2 border border-indigo-100/40 text-xs text-slate-700 font-semibold flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1 shrink-0" />
-                          <span>{m}</span>
+                        <div key={i} className="bg-indigo-50/60 rounded-xl p-2.5 border border-indigo-100/50 text-xs text-slate-800 font-semibold flex items-start gap-2">
+                          <Clock className="w-3.5 h-3.5 text-indigo-500 mt-0.5 shrink-0" />
+                          <span>{typeof m === 'string' ? m : `${m.medicamento} - ${m.posologia}`}</span>
                         </div>
                       )) : null;
                     })()}
                   </div>
                 )}
+
                 {item.observacoes && <p className="text-[11px] text-slate-400 mt-3 font-medium italic">{item.observacoes}</p>}
               </div>
 
               {item.arquivo_url && (
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">Receita Anexada</span>
+                  <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">Anexo Digitalizado</span>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => {
@@ -207,7 +219,7 @@ export const ClientPrescriptions: React.FC = () => {
                       }}
                       className="flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-indigo-600 transition cursor-pointer"
                     >
-                      <Eye className="w-3.5 h-3.5 text-indigo-500" /> Ver
+                      <Eye className="w-3.5 h-3.5 text-indigo-500" /> Visualizar
                     </button>
                     <button
                       onClick={() => {
@@ -218,7 +230,7 @@ export const ClientPrescriptions: React.FC = () => {
                       }}
                       className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
                     >
-                      <Download className="w-3.5 h-3.5" /> Baixar
+                      <Download className="w-3.5 h-3.5" /> PDF
                     </button>
                   </div>
                 </div>
@@ -228,11 +240,12 @@ export const ClientPrescriptions: React.FC = () => {
         </div>
       )}
 
+      {/* Modal de Adição/Edição de Receita */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h3 className="text-lg font-black text-slate-800">Nova Receita</h3>
+              <h3 className="text-lg font-black text-slate-800">Cadastrar Receita Médica</h3>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
@@ -240,18 +253,18 @@ export const ClientPrescriptions: React.FC = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Upload da Receita (Leitura da IA)</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Anexo da Receita (Leitura da IA)</label>
                   <label className="flex flex-col items-center justify-center gap-2 cursor-pointer bg-slate-50 border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-xl px-4 py-6 transition">
                     {ocrLoading ? (
                       <>
                         <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-                        <span className="text-sm text-indigo-600 font-black animate-pulse">Lendo escrita do receituário com IA...</span>
+                        <span className="text-sm text-indigo-600 font-black animate-pulse">Escaneando imagem/PDF com IA...</span>
                       </>
                     ) : (
                       <>
                         <Upload className="w-6 h-6 text-slate-400" />
-                        <span className="text-sm text-slate-600 font-bold">{form.arquivo_url ? '✓ Receita anexada com sucesso' : 'Selecione a imagem ou PDF'}</span>
-                        <span className="text-[10px] text-slate-400">PDF, JPG, PNG (IA detectará médico e medicamentos)</span>
+                        <span className="text-sm text-slate-600 font-bold">{form.arquivo_url ? '✓ Arquivo anexado com sucesso' : 'Selecione a imagem ou PDF da receita'}</span>
+                        <span className="text-[10px] text-slate-400">A IA extrairá os medicamentos automaticamente</span>
                       </>
                     )}
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} className="hidden" disabled={ocrLoading} />
@@ -260,7 +273,7 @@ export const ClientPrescriptions: React.FC = () => {
 
                 {extractedOcrText && (
                   <div className="col-span-2 bg-slate-900 text-slate-200 rounded-xl p-4 font-mono text-[10.5px] leading-relaxed whitespace-pre shadow-inner">
-                    <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest mb-1.5">// TEXTO DIGITALIZADO PELA IA</p>
+                    <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest mb-1.5">// LEITURA EXTRAÍDA DA RECEITA</p>
                     {extractedOcrText}
                   </div>
                 )}
@@ -276,38 +289,6 @@ export const ClientPrescriptions: React.FC = () => {
                   <input value={form.medico} onChange={e => setForm(f => ({ ...f, medico: e.target.value }))}
                     placeholder="Dr(a). Nome" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition" />
                 </div>
-                
-                <div className="col-span-2 space-y-2">
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="block text-xs font-bold text-slate-600">Medicamentos Prescritos (Linhas independentes)</label>
-                    <button onClick={() => setMedicamentosList([...medicamentosList, ''])} className="text-[10px] font-bold text-blue-600 hover:underline">+ Adicionar Medicamento</button>
-                  </div>
-                  {medicamentosList.map((med, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <input 
-                        value={med} 
-                        onChange={e => {
-                          const newList = [...medicamentosList];
-                          newList[index] = e.target.value;
-                          setMedicamentosList(newList);
-                        }}
-                        placeholder="Ex: Dipirona 500mg - 1 comp 6/6h" 
-                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition" 
-                      />
-                      {medicamentosList.length > 1 && (
-                        <button onClick={() => setMedicamentosList(medicamentosList.filter((_, i) => i !== index))} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-xl transition">
-                          <Minus className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Observações</label>
-                  <textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
-                    rows={2} placeholder="Observações adicionais..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition resize-none" />
-                </div>
               </div>
             </div>
             <div className="p-6 border-t border-slate-100 flex gap-3">
@@ -320,13 +301,13 @@ export const ClientPrescriptions: React.FC = () => {
           </div>
         </div>
       )}
-    
-      {/* Viewer Modal */}
+
+      {/* Visualizador de Arquivo Anexo */}
       {viewingFile && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden animate-fadeIn">
             <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-600"/> Visualizador de Documento</h3>
+              <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-600"/> Visualizador de Documento Anexo</h3>
               <button onClick={() => setViewingFile(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"><X className="w-5 h-5" /></button>
             </div>
             <div className="flex-1 bg-slate-100 p-4 overflow-auto flex items-center justify-center">
