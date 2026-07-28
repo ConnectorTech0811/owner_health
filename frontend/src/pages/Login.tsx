@@ -171,23 +171,6 @@ export const Login = () => {
                 Acesse o painel do Owner Health para gerenciar pré-atendimentos e otimizar o fluxo da sua clínica.
               </p>
 
-              {/* Stats row */}
-              <div className="flex justify-center gap-6 mt-6">
-                <div className="text-center">
-                  <p className="text-2xl font-black">98%</p>
-                  <p className="text-xs opacity-70 font-medium">Satisfação</p>
-                </div>
-                <div className="w-px bg-white opacity-20" />
-                <div className="text-center">
-                  <p className="text-2xl font-black">+500</p>
-                  <p className="text-xs opacity-70 font-medium">Clínicas</p>
-                </div>
-                <div className="w-px bg-white opacity-20" />
-                <div className="text-center">
-                  <p className="text-2xl font-black">24/7</p>
-                  <p className="text-xs opacity-70 font-medium">Suporte</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
