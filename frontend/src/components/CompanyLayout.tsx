@@ -91,11 +91,11 @@ export const CompanyLayout: React.FC<CompanyLayoutProps> = ({ children }) => {
 
 
   // Booleans de acesso por funcionalidade
-  const canSeeGestao    = isAdmin || isAdministrativo;   // Profissionais + Planos de Saúde
-  const canSeePlataforma = isAdmin;                       // Meu Plano & Licença (só admin master)
-  const canSeePrescricoes = isAdmin || isMedico;          // Receitas & Atestados
-  const canSeeAnamnesis  = isAdmin || isAdministrativo;  // Configurar Anamnese
-  // Todos os perfis veem Painel, Agendas, Pacientes
+  const canSeeGestao      = isAdmin || isAdministrativo;   // Profissionais + Planos de Saúde
+  const canSeePlataforma  = isAdmin;                       // Meu Plano & Licença (só admin master)
+  const canSeePrescricoes = isMedico;                      // Receitas & Atestados (uso exclusivo médico, oculto p/ clínica/hospital/adm)
+  const canSeeAnamnesis   = !isAdministrativo;             // Configurar Anamnese (oculto para o perfil administrativo)
+  const canSeeHealthPlans = (isAdmin || isAdministrativo) && !isMedico; // Planos de Saúde oculto para médicos
 
   const menuGroups: MenuGroup[] = [
     {
@@ -104,7 +104,7 @@ export const CompanyLayout: React.FC<CompanyLayoutProps> = ({ children }) => {
         { label: 'Painel Geral', path: '/company/dashboard', icon: Building2 },
         ...(canSeeGestao ? [{ label: 'Profissionais', path: '/company/professionals', icon: Stethoscope }] : []),
         { label: 'Agendas', path: '/company/scheduling', icon: Calendar },
-        ...(canSeeGestao ? [{ label: 'Planos de Saúde', path: '/company/health-plans', icon: ClipboardList }] : []),
+        ...(canSeeHealthPlans ? [{ label: 'Planos de Saúde', path: '/company/health-plans', icon: ClipboardList }] : []),
       ],
     },
     {

@@ -47,7 +47,6 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
         { label: 'Meus Pacientes', path: '/professional/patients', icon: Users },
         { label: 'Anamnese', path: '/professional/anamnesis', icon: ClipboardList },
         { label: 'Receitas & Atestados', path: '/professional/prescriptions', icon: FileText },
-        { label: 'Planos de Saúde', path: '/professional/health-plans', icon: Stethoscope },
         { label: 'Meu Plano', path: '/professional/my-plan', icon: HeartPulse },
       ];
     }
@@ -56,6 +55,7 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
       return [
         { label: 'Agenda da Clínica', path: '/professional/scheduling', icon: Calendar },
         { label: 'Cadastro de Pacientes', path: '/professional/patients', icon: Users },
+        { label: 'Anamnese da Clínica', path: '/professional/anamnesis', icon: ClipboardList },
         { label: 'Equipe Médica', path: '/professional/team', icon: Stethoscope },
         { label: 'Convênios & Planos', path: '/professional/health-plans', icon: ClipboardList },
       ];
@@ -67,7 +67,6 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
         { label: 'Agenda Geral', path: '/professional/scheduling', icon: Calendar },
         { label: 'Base de Pacientes', path: '/professional/patients', icon: Users },
         { label: 'Convênios & Planos', path: '/professional/health-plans', icon: ClipboardList },
-        { label: 'Modelos de Anamnese', path: '/professional/anamnesis', icon: FileText },
         { label: 'Meu Plano', path: '/professional/my-plan', icon: HeartPulse },
       ];
     }

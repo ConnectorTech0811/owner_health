@@ -27,6 +27,7 @@ interface Section {
 interface AnamnesisResponse {
   id: number; empresa_id: number; criado_em: string;
   status: string; respondido_em?: string;
+  titulo?: string; nome_medico?: string; medico_nome?: string; form_titulo?: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -452,9 +453,22 @@ export const ClientAnamnesis: React.FC = () => {
       );
     }
     
+    const currentResponse = responses.find(r => r.id === currentRequestId);
+
     return (
       <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">
-      {/* Barra de progresso */}
+        {/* Banner com Título da Anamnese e Nome do Médico Solicitante */}
+        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl p-5 text-white shadow-md space-y-1">
+          <div className="flex items-center gap-2 text-xs font-bold text-violet-200 uppercase tracking-wider">
+            <FileText className="w-4 h-4" /> Formulário de Anamnese
+          </div>
+          <h1 className="text-lg font-black">{currentResponse?.titulo || (currentResponse as any)?.form_titulo || 'Formulário de Anamnese Médica'}</h1>
+          <p className="text-xs text-violet-100 font-medium">
+            Solicitado por: <strong className="text-white font-bold">{currentResponse?.nome_medico || (currentResponse as any)?.medico_nome || 'Dr(a). Médico Solicitante'}</strong>
+          </p>
+        </div>
+
+        {/* Barra de progresso */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">

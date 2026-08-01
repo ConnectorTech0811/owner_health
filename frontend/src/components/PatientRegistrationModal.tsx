@@ -11,6 +11,21 @@ interface PatientRegistrationModalProps {
 
 const STEPS = ['Dados Pessoais & Endereço', 'Plano de Saúde', 'Acesso & Segurança'];
 
+// Helper Field component (definido fora do modal para evitar remount/perda de foco a cada caractere)
+const F = ({ label, id, value, onChange, type = "text", placeholder = "", icon = null, colSpan = false, isValid = null }: any) => (
+  <div className={colSpan ? "md:col-span-2" : ""}>
+    <label htmlFor={id} className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>
+    <div className="relative">
+      {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
+      <input id={id} type={type}
+        min={type === 'date' ? '1940-01-01' : undefined}
+        max={type === 'date' ? new Date().toISOString().split('T')[0] : undefined}
+        value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        className={`w-full border ${isValid === false ? 'border-red-500 bg-red-50 focus:border-red-500' : isValid === true ? 'border-emerald-500 bg-emerald-50 focus:border-emerald-500 text-emerald-900' : 'border-slate-200 bg-slate-50 focus:border-blue-500 text-slate-700'} rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none transition`} />
+    </div>
+  </div>
+);
+
 export const PatientRegistrationModal: React.FC<PatientRegistrationModalProps> = ({ onClose, onSuccess, companyId }) => {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -107,20 +122,7 @@ export const PatientRegistrationModal: React.FC<PatientRegistrationModalProps> =
     } finally { setLoading(false); }
   };
 
-  // Helper Field component
-  const F = ({ label, id, value, onChange, type = "text", placeholder = "", icon = null, colSpan = false, isValid = null }: any) => (
-    <div className={colSpan ? "md:col-span-2" : ""}>
-      <label htmlFor={id} className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>
-      <div className="relative">
-        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
-        <input id={id} type={type}
-          min={type === 'date' ? '1940-01-01' : undefined}
-          max={type === 'date' ? new Date().toISOString().split('T')[0] : undefined}
-          value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-          className={`w-full border ${isValid === false ? 'border-red-500 bg-red-50 focus:border-red-500' : isValid === true ? 'border-emerald-500 bg-emerald-50 focus:border-emerald-500 text-emerald-900' : 'border-slate-200 bg-slate-50 focus:border-blue-500 text-slate-700'} rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none transition`} />
-      </div>
-    </div>
-  );
+
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-8 overflow-y-auto">

@@ -4,13 +4,14 @@ import {
   Plus, Trash2, ChevronDown, ChevronUp, GripVertical, Settings,
   Save, Copy, Check, Send, Sparkles, Eye, ClipboardList, Users,
   Type, AlignLeft, Circle, CheckSquare, List, BarChart3, Calendar,
-  Loader2, AlertCircle, Edit3, ChevronRight, Stethoscope
+  Loader2, AlertCircle, Edit3, ChevronRight, Stethoscope, ShieldAlert
 } from 'lucide-react';
 import { API_URL } from '../../config';
 import { CompanyAnamnesisPreviewModal } from './CompanyAnamnesisPreviewModal';
 import { TemplatePreviewModal } from './TemplatePreviewModal';
 import { TemplateEditorModal } from './TemplateEditorModal';
 import { QuestionModal } from '../../components/QuestionModal';
+import { SearchableSelect } from '../../components/SearchableSelect';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -197,6 +198,8 @@ export const CompanyAnamnesisConfig: React.FC = () => {
 
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const [selectedCustomDoctorId, setSelectedCustomDoctorId] = useState<string | number>('');
+  const [sharePatientId, setSharePatientId] = useState<string | number>('');
+  const [shareDoctorId, setShareDoctorId] = useState<string | number>('');
 
   const fetchDoctorsList = async () => {
     try {
@@ -257,7 +260,7 @@ export const CompanyAnamnesisConfig: React.FC = () => {
 
   useEffect(() => {
     loadPatientsList();
-    if (!isDoctor) fetchDoctorsList();
+    fetchDoctorsList();
   }, []);
 
   useEffect(() => {
@@ -588,11 +591,20 @@ export const CompanyAnamnesisConfig: React.FC = () => {
     }
   };
 
-  const handleCopyLink = () => {
-    const linkBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-      ? 'https://owner-health-ktsf.vercel.app' 
+  const getShareableLink = () => {
+    const baseUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'https://owner-health-ktsf.vercel.app'
       : window.location.origin;
-    navigator.clipboard.writeText(`${linkBase}/client/anamnesis`);
+    const params = new URLSearchParams();
+    if (sharePatientId) params.set('paciente_id', String(sharePatientId));
+    if (shareDoctorId) params.set('medico_id', String(shareDoctorId));
+    const qs = params.toString();
+    return `${baseUrl}/client/anamnesis${qs ? '?' + qs : ''}`;
+  };
+
+  const handleCopyLink = () => {
+    const link = getShareableLink();
+    navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -607,6 +619,18 @@ export const CompanyAnamnesisConfig: React.FC = () => {
       </div>
     </div>
   );
+
+  if (userObj.tipo_profissional === 'administrativo') {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 my-8 max-w-lg mx-auto animate-fadeIn">
+        <ShieldAlert className="w-12 h-12 text-amber-500 mx-auto" />
+        <h3 className="text-lg font-black text-slate-800">Acesso Restrito ao Perfil Administrativo</h3>
+        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+          A tela de configuração de Anamnese não está disponível para o perfil administrativo.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -879,18 +903,50 @@ export const CompanyAnamnesisConfig: React.FC = () => {
               <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
                 <div>
                   <h3 className="text-base font-black text-slate-800 mb-1">Enviar para pacientes</h3>
-                  <p className="text-sm text-slate-500">Compartilhe o link abaixo com seus pacientes para que preencham o formulário antes da consulta.</p>
+                  <p className="text-sm text-slate-500">Selecione o paciente e o médico para gerar o link personalizado e enviar o formulário de anamnese.</p>
                 </div>
+
+                {/* Filtros de seleção dinâmica por digitação automática para Paciente e Médico */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                  <div>
+                    <SearchableSelect
+                      label="1. Selecione o Paciente"
+                      options={patientsList.map(p => ({
+                        id: p.id,
+                        label: p.nome,
+                        sublabel: p.cpf ? `CPF: ${p.cpf}` : undefined,
+                        extra: (p as any).celular
+                      }))}
+                      value={sharePatientId}
+                      onChange={(val) => setSharePatientId(val ? String(val) : '')}
+                      placeholder="Digite para buscar paciente por Nome ou CPF..."
+                    />
+                  </div>
+
+                  <div>
+                    <SearchableSelect
+                      label="2. Selecione o Médico da Consulta/Atendimento"
+                      options={doctorsList.map(d => ({
+                        id: d.id,
+                        label: `Dr(a). ${d.nome}`,
+                        sublabel: d.especialidade || 'Médico',
+                        extra: d.numero_conselho || 'CRM'
+                      }))}
+                      value={shareDoctorId}
+                      onChange={(val) => setShareDoctorId(val ? String(val) : '')}
+                      placeholder="Digite para buscar médico por Nome, CRM ou Especialidade..."
+                    />
+                  </div>
+                </div>
+
                 <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Link do formulário</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Link do formulário de anamnese</p>
                   <div className="bg-white border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-600 break-all select-all">
-                    {window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                      ? 'https://owner-health-ktsf.vercel.app' 
-                      : window.location.origin}/client/anamnesis
+                    {getShareableLink()}
                   </div>
                 </div>
                 <button onClick={handleCopyLink}
-                  className="w-full py-3.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition"
+                  className="w-full py-3.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition cursor-pointer"
                   style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
                   {copied ? <><Check className="w-4 h-4 text-emerald-300" /> Link copiado!</> : <><Copy className="w-4 h-4" /> Copiar link</>}
                 </button>

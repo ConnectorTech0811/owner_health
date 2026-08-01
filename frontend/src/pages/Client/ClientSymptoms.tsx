@@ -79,7 +79,9 @@ export const ClientSymptoms: React.FC = () => {
     b.symptoms.filter(s => selected.has(s)).length - a.symptoms.filter(s => selected.has(s)).length
   );
 
-  const filtered = filter === 'Todos' ? SYMPTOMS : SYMPTOMS.filter(s => s.system === filter);
+  const filtered = (filter === 'Todos' ? SYMPTOMS : SYMPTOMS.filter(s => s.system === filter))
+    .slice()
+    .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
 
   return (
     <div className="space-y-6 animate-fadeIn">

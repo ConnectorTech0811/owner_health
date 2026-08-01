@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, ShieldCheck, Download, Trash2, Calendar, UserCheck, RefreshCw } from 'lucide-react';
 import { API_URL } from '../../config';
+import { SearchableSelect } from '../../components/SearchableSelect';
 
 interface ShareRule {
   id: string;
@@ -296,18 +297,18 @@ export const ClientPrivacy: React.FC = () => {
 
                 return (
                   <>
-                    <select
+                    <SearchableSelect
+                      label="Selecione o Médico da Clínica"
+                      options={availableDoctors.map(doc => ({
+                        id: doc.id,
+                        label: `Dr(a). ${doc.nome}`,
+                        sublabel: doc.especialidade || 'Médico',
+                        extra: doc.numero_conselho || 'CRM'
+                      }))}
                       value={selectedDoctorId}
-                      onChange={e => setSelectedDoctorId(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
-                    >
-                      <option value="">-- Escolha o Médico --</option>
-                      {availableDoctors.map(doc => (
-                        <option key={doc.id} value={doc.id}>
-                          Dr(a). {doc.nome} ({doc.especialidade || 'Médico'})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={val => setSelectedDoctorId(val ? String(val) : '')}
+                      placeholder="Digite para buscar médico por Nome, CRM ou Especialidade..."
+                    />
                     {availableDoctors.length === 0 && doctorsList.length > 0 && (
                       <p className="text-[11px] text-amber-600 font-bold">
                         Todos os médicos cadastrados já possuem autorização de acesso ao seu prontuário.

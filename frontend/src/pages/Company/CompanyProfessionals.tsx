@@ -228,6 +228,24 @@ export const CompanyProfessionals: React.FC = () => {
     }
 
     
+    if (!form.data_nascimento) {
+      setError('Data de nascimento é obrigatória.');
+      return;
+    }
+
+    const birthDate = new Date(form.data_nascimento + 'T00:00:00');
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (isNaN(birthDate.getTime()) || birthDate > today || age < 16) {
+      setError('Data de nascimento inválida. O profissional deve ter no mínimo 16 anos.');
+      return;
+    }
+
     if (!isValidCPF(form.cpf)) {
       setError('CPF inválido. Deve conter 11 dígitos.');
       return;
@@ -608,7 +626,7 @@ export const CompanyProfessionals: React.FC = () => {
                   >
                     <option value="medico">Médico / Pro de Saúde</option>
                     <option value="secretario">Secretário(a)</option>
-                    {currentUserRole === 'administrativo' && (
+                    {currentUserRole !== 'secretario' && currentUserRole !== 'secretaria' && (
                       <option value="administrativo">Administrativo</option>
                     )}
                   </select>
@@ -631,7 +649,11 @@ export const CompanyProfessionals: React.FC = () => {
                   <input
                     type="date" required
                     min="1940-01-01"
-                    max={new Date().toISOString().split('T')[0]}
+                    max={(() => {
+                      const d = new Date();
+                      d.setFullYear(d.getFullYear() - 16);
+                      return d.toISOString().split('T')[0];
+                    })()}
                     value={form.data_nascimento}
                     onChange={e => setForm({...form, data_nascimento: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium"
@@ -725,13 +747,13 @@ export const CompanyProfessionals: React.FC = () => {
               {/* Endereço */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-slate-100 pt-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">CEP</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">CEP *</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
                       {cepLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
                     </span>
                     <input
-                      type="text"
+                      type="text" required
                       value={form.cep}
                       onChange={e => setForm({...form, cep: e.target.value.replace(/\D/g,'')})}
                       onBlur={handleCepBlur}

@@ -8,6 +8,7 @@ import {
 import { API_URL } from '../../config';
 import { PatientRegistrationModal } from '../../components/PatientRegistrationModal';
 import { PatientAnamnesisCustomizerModal } from './PatientAnamnesisCustomizerModal';
+import { SearchableSelect } from '../../components/SearchableSelect';
 
 const formatDatePtBr = (dateStr?: string | null) => {
   if (!dateStr || typeof dateStr !== 'string' || dateStr.trim() === '') return 'Não informada';
@@ -911,8 +912,8 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
 
       {/* Modal de Liberar Acesso ao Médico (Opção 1 - Clínica/Hospital/Admin) */}
       {showGrantModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 animate-fadeIn space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl border border-slate-100 animate-fadeIn space-y-5 max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-amber-600" />
@@ -928,23 +929,22 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Selecione o Paciente</label>
-                <select
+                <SearchableSelect
+                  label="Selecione o Paciente"
+                  options={patientsList.map(p => ({
+                    id: p.id,
+                    label: p.nome,
+                    sublabel: p.cpf ? `CPF: ${p.cpf}` : undefined,
+                    extra: p.celular ? `Tel: ${p.celular}` : undefined
+                  }))}
                   value={selectedPatientForGrant?.id || ''}
-                  onChange={e => {
-                    const p = patientsList.find(pt => pt.id === parseInt(e.target.value));
+                  onChange={(val) => {
+                    const p = patientsList.find(pt => String(pt.id) === String(val));
                     setSelectedPatientForGrant(p || null);
                     setGrantSuccessMsg('');
                   }}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
-                >
-                  <option value="">-- Escolha o Paciente --</option>
-                  {patientsList.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome} (CPF: {p.cpf})
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Digite para buscar por Nome ou CPF..."
+                />
               </div>
 
               {selectedPatientForGrant && (() => {
@@ -952,22 +952,23 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
                 const grantedDocIds = currentPatientAccesses.map(a => a.medico_id);
                 const availableDoctors = doctorsList.filter(doc => !grantedDocIds.includes(doc.id));
 
+                const doctorOpts = availableDoctors.map(doc => ({
+                  id: doc.id,
+                  label: `Dr(a). ${doc.nome}`,
+                  sublabel: doc.especialidade || 'Médico',
+                  extra: doc.numero_conselho || 'CRM'
+                }));
+
                 return (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Selecione o Médico da Clínica</label>
-                      <select
+                      <SearchableSelect
+                        label="Selecione o Médico da Clínica"
+                        options={doctorOpts}
                         value={selectedDoctorId}
-                        onChange={e => setSelectedDoctorId(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
-                      >
-                        <option value="">-- Escolha o Médico --</option>
-                        {availableDoctors.map(doc => (
-                          <option key={doc.id} value={doc.id}>
-                            Dr(a). {doc.nome} — {doc.especialidade || 'Médico'} ({doc.numero_conselho || 'CRM'})
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => setSelectedDoctorId(val ? String(val) : '')}
+                        placeholder="Digite para buscar médico por Nome, CRM ou Especialidade..."
+                      />
                       {availableDoctors.length === 0 && (
                         <p className="text-[11px] text-amber-600 font-bold mt-1">
                           Todos os médicos cadastrados já possuem acesso ao prontuário deste paciente.

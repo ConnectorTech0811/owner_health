@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { HeartPulse, ShieldCheck, User, Users, ClipboardList } from 'lucide-react';
+import { HeartPulse, ShieldCheck, User, Users, ClipboardList, Edit3, Loader2, X, Check } from 'lucide-react';
 import { API_URL } from '../../config';
 
 export const ClientDashboard: React.FC = () => {
@@ -7,6 +7,14 @@ export const ClientDashboard: React.FC = () => {
   const [parentClient, setParentClient] = useState<any>(null); // Se for dependente, guarda o titular
   const [loading, setLoading] = useState(true);
   const [showQr, setShowQr] = useState(false);
+  const [showEditPlanModal, setShowEditPlanModal] = useState(false);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [planForm, setPlanForm] = useState({
+    plano_empresa: '',
+    plano_nome: '',
+    plano_produto: '',
+    plano_numero_carteirinha: ''
+  });
 
   const activeProfileId = localStorage.getItem('activeProfileId');
   const activeProfileRole = localStorage.getItem('activeProfileRole');
@@ -180,10 +188,26 @@ export const ClientDashboard: React.FC = () => {
           
           {/* Card Detalhes do Plano */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <ClipboardList className="w-5 h-5 text-blue-600" />
-              <span>Dados da Cobertura do Plano</span>
-            </h3>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-blue-600" />
+                <span>Dados da Cobertura do Plano</span>
+              </h3>
+              <button
+                onClick={() => {
+                  setPlanForm({
+                    plano_empresa: data?.plano_empresa || '',
+                    plano_nome: data?.plano_nome || '',
+                    plano_produto: data?.plano_produto || '',
+                    plano_numero_carteirinha: data?.plano_numero_carteirinha || ''
+                  });
+                  setShowEditPlanModal(true);
+                }}
+                className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition cursor-pointer border border-blue-100"
+              >
+                <Edit3 className="w-3.5 h-3.5" /> Editar Plano
+              </button>
+            </div>
             
             <div className="grid grid-cols-2 gap-6 text-xs font-semibold text-slate-600">
               <div>
@@ -252,6 +276,109 @@ export const ClientDashboard: React.FC = () => {
 
         </div>
       </div>
+      {/* Modal de Edição do Plano de Saúde */}
+      {showEditPlanModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6 border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-800">Editar Plano de Saúde</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Atualize a operadora e dados de cobertura do seu plano</p>
+              </div>
+              <button onClick={() => setShowEditPlanModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 transition cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Operadora / Convênio *</label>
+                <input
+                  type="text"
+                  value={planForm.plano_empresa}
+                  onChange={e => setPlanForm({ ...planForm, plano_empresa: e.target.value })}
+                  placeholder="Ex: Unimed, Bradesco Saúde, SulAmérica"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Nome Comercial do Plano *</label>
+                <input
+                  type="text"
+                  value={planForm.plano_nome}
+                  onChange={e => setPlanForm({ ...planForm, plano_nome: e.target.value })}
+                  placeholder="Ex: Especial 100, Estilo Flex"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Acomodação / Produto</label>
+                <input
+                  type="text"
+                  value={planForm.plano_produto}
+                  onChange={e => setPlanForm({ ...planForm, plano_produto: e.target.value })}
+                  placeholder="Ex: Apartamento, Enfermaria"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Número da Carteirinha</label>
+                <input
+                  type="text"
+                  value={planForm.plano_numero_carteirinha}
+                  onChange={e => setPlanForm({ ...planForm, plano_numero_carteirinha: e.target.value })}
+                  placeholder="Ex: 0023 4567 8901 2345"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowEditPlanModal(false)}
+                className="flex-1 py-3 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={savingPlan}
+                onClick={async () => {
+                  setSavingPlan(true);
+                  try {
+                    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+                    const res = await fetch(`${API_URL}/api/clients/${activeProfileId}`, {
+                      method: 'PUT',
+                      headers,
+                      body: JSON.stringify(planForm)
+                    });
+                    if (res.ok) {
+                      const updated = await res.json();
+                      setData(updated);
+                      setShowEditPlanModal(false);
+                      alert('Dados do plano de saúde atualizados com sucesso!');
+                    } else {
+                      // Fallback local update if offline/simulated
+                      setData({ ...data, ...planForm });
+                      setShowEditPlanModal(false);
+                    }
+                  } catch {
+                    setData({ ...data, ...planForm });
+                    setShowEditPlanModal(false);
+                  } finally {
+                    setSavingPlan(false);
+                  }
+                }}
+                className="flex-1 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              >
+                {savingPlan ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

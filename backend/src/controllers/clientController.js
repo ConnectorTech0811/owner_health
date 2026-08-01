@@ -27,7 +27,7 @@ const getClients = async (req, res) => {
       baseClients = baseClients.filter(c => c.status !== 'inativo');
     }
 
-    // Resolver ID do profissional médico para filtragem de acesso de prontuário
+    // Resolver ID do médico para filtragem de acesso de prontuário
     let doctorIdToFilter = null;
     if (medico_id) {
       const docInput = parseInt(medico_id);
@@ -36,21 +36,38 @@ const getClients = async (req, res) => {
         doc = await db('profissionais').where({ usuario_id: docInput }).first();
       }
       if (doc) doctorIdToFilter = doc.id;
-    } else if (req.user && (req.user.tipo_profissional === 'medico' || req.user.tipo === 'medico')) {
-      let doc = await db('profissionais').where({ usuario_id: req.user.id }).first();
+    }
+
+    // Se o usuário logado for um profissional médico
+    if (!doctorIdToFilter && req.user) {
+      let doc = null;
+      if (req.user.id) {
+        doc = await db('profissionais').where({ usuario_id: req.user.id }).first();
+      }
+      if (!doc && req.user.email) {
+        doc = await db('profissionais').where({ email: req.user.email }).first();
+      }
       if (!doc && req.user.profissional_id) {
         doc = await db('profissionais').where({ id: req.user.profissional_id }).first();
       }
-      if (doc) doctorIdToFilter = doc.id;
+
+      if (doc && (doc.tipo_profissional === 'medico' || doc.tipo_profissional === 'médico' || req.user.tipo_profissional === 'medico')) {
+        doctorIdToFilter = doc.id;
+      }
     }
 
     if (doctorIdToFilter) {
+      const allowedIds = new Set();
+
       const hasAccessTable = await db.schema.hasTable('paciente_medico_acessos');
       if (hasAccessTable) {
         const acessos = await db('paciente_medico_acessos').where({ medico_id: doctorIdToFilter }).select('cliente_id');
-        const allowedIds = new Set(acessos.map(a => a.cliente_id));
-        baseClients = baseClients.filter(c => allowedIds.has(c.id));
+        acessos.forEach(a => allowedIds.add(a.cliente_id));
       }
+
+      baseClients = baseClients.filter(c => allowedIds.has(c.id));
+    } else if (String(incluir_inativos) !== 'true' && !isEmpresa) {
+      baseClients = baseClients.filter(c => c.status !== 'inativo');
     }
 
     return res.json(baseClients);
@@ -63,12 +80,42 @@ const getClients = async (req, res) => {
 const getClientById = async (req, res) => {
   const { id } = req.params;
   try {
+    const db = require('../../knexfile');
     const clients = await dbHelper.query('clientes', 'select', { id: parseInt(id) });
     if (clients.length === 0) {
       return res.status(404).json({ error: 'Cliente não encontrado' });
     }
     const client = clients[0];
     
+    // Se quem tenta acessar for um médico, verificar revogação / autorização estrita
+    if (req.user) {
+      let doctor = null;
+      if (req.user.id) {
+        doctor = await db('profissionais').where({ usuario_id: req.user.id }).first();
+      }
+      if (!doctor && req.user.email) {
+        doctor = await db('profissionais').where({ email: req.user.email }).first();
+      }
+      if (!doctor && req.user.profissional_id) {
+        doctor = await db('profissionais').where({ id: req.user.profissional_id }).first();
+      }
+
+      if (doctor && (doctor.tipo_profissional === 'medico' || doctor.tipo_profissional === 'médico' || req.user.tipo_profissional === 'medico')) {
+        const hasAccessTable = await db.schema.hasTable('paciente_medico_acessos');
+        if (hasAccessTable) {
+          const permissao = await db('paciente_medico_acessos')
+            .where({ cliente_id: client.id, medico_id: doctor.id })
+            .first();
+
+          if (!permissao) {
+            return res.status(403).json({
+              error: 'Acesso negado: O acesso ao prontuário deste paciente foi revogado ou não foi autorizado.'
+            });
+          }
+        }
+      }
+    }
+
     // Obter dependentes do cliente
     const dependents = await dbHelper.query('dependentes', 'select', { cliente_id: client.id });
     client.dependentes = dependents;

@@ -17,7 +17,7 @@ export const formatRoleName = (tipoProfissional?: string, nome?: string): string
     }
 
     const firstName = nome.trim().split(' ')[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    
+
     // Nomes masculinos conhecidos terminados em A ou comuns
     const maleNames = ['luca', 'lucas', 'joshua', 'sasha', 'mustafa', 'jean', 'george', 'guilherme', 'felipe', 'henrique', 'alexandre', 'andre', 'jorge', 'jose', 'joao'];
     if (maleNames.includes(firstName)) return 'Secretário';

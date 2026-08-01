@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   FileText, Loader2, Printer, ShieldCheck, History, Search,
   AlertTriangle, Plus, Trash2, BookOpen, Sparkles,
-  Stethoscope, ChevronRight, Eye, X, Filter
+  Stethoscope, ChevronRight, Eye, X, Filter, ShieldAlert
 } from 'lucide-react';
 import { API_URL } from '../../config';
+import { SearchableSelect } from '../../components/SearchableSelect';
 
 interface PrescriptionItem {
   medicamento: string;
@@ -445,6 +446,19 @@ export const CompanyPrescriptions: React.FC = () => {
     );
   }
 
+  if (!isDoctor) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 my-8 max-w-lg mx-auto animate-fadeIn">
+        <ShieldAlert className="w-12 h-12 text-amber-500 mx-auto" />
+        <h3 className="text-lg font-black text-slate-800">Acesso Restrito ao Perfil Médico</h3>
+        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+          A emissão de receitas e atestados médicos é de uso exclusivo de profissionais de saúde (médicos). 
+          O perfil de clínica/hospital ou administrativo não possui permissão para emitir receituários.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Estilos para impressão A4 Oficial em 1 ou 2 Vias */}
@@ -585,34 +599,36 @@ export const CompanyPrescriptions: React.FC = () => {
                   {/* Médico Emitente e Paciente */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Médico Prescritor *</label>
-                      <select
-                        value={docForm.profissional_id}
-                        onChange={e => setDocForm({...docForm, profissional_id: e.target.value})}
+                      <SearchableSelect
+                        label="Médico Prescritor"
+                        required
                         disabled={isDoctor}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-indigo-500"
-                      >
-                        {professionals.map(p => (
-                          <option key={p.id} value={p.id}>{p.nome} ({p.numero_conselho || 'CRM'})</option>
-                        ))}
-                      </select>
+                        options={professionals.map(p => ({
+                          id: p.id,
+                          label: p.nome,
+                          sublabel: p.numero_conselho || 'CRM',
+                          extra: p.especialidade
+                        }))}
+                        value={docForm.profissional_id}
+                        onChange={(val) => setDocForm({...docForm, profissional_id: String(val || '')})}
+                        placeholder="Buscar médico por nome ou CRM..."
+                      />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Selecione o Paciente *</label>
-                      <select
+                      <SearchableSelect
+                        label="Selecione o Paciente"
                         required
+                        options={patients.map(p => ({
+                          id: p.cpf || p.nome,
+                          label: p.nome,
+                          sublabel: p.cpf ? `CPF: ${p.cpf}` : undefined,
+                          extra: p.celular
+                        }))}
                         value={docForm.paciente_cpf}
-                        onChange={e => handlePatientSelect(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer"
-                      >
-                        <option value="">-- Escolher Paciente --</option>
-                        {patients.map(p => (
-                          <option key={p.id} value={p.cpf || p.nome}>
-                            {p.nome} {p.cpf ? `(CPF: ${p.cpf})` : ''}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => handlePatientSelect(String(val || ''))}
+                        placeholder="Digite para buscar paciente por Nome ou CPF..."
+                      />
                     </div>
                   </div>
 
