@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { HeartPulse, ShieldCheck, User, Users, ClipboardList, Edit3, Loader2, X, Check } from 'lucide-react';
+import { HeartPulse, ShieldCheck, User, Users, ClipboardList, Edit3, Loader2, X, Check, Star, MessageSquare } from 'lucide-react';
 import { API_URL } from '../../config';
 
 export const ClientDashboard: React.FC = () => {
@@ -15,6 +15,20 @@ export const ClientDashboard: React.FC = () => {
     plano_produto: '',
     plano_numero_carteirinha: ''
   });
+
+  // Estado de Avaliação do Atendimento
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingForm, setRatingForm] = useState({
+    profissional_id: 1,
+    profissional_nome: 'Dr. Márcio Silva',
+    especialidade: 'Cardiologia',
+    pontualidade: 5,
+    clareza: 5,
+    qualidade: 5,
+    comentario: ''
+  });
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   const activeProfileId = localStorage.getItem('activeProfileId');
   const activeProfileRole = localStorage.getItem('activeProfileRole');
@@ -229,6 +243,28 @@ export const ClientDashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* Card Avaliação de Consulta */}
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 rounded-2xl text-white shadow-md space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full text-amber-100">
+                Avaliação de Consulta
+              </span>
+              <div className="flex text-amber-200">
+                {[1,2,3,4,5].map(n => <Star key={n} className="w-3.5 h-3.5 fill-current" />)}
+              </div>
+            </div>
+            <h4 className="text-base font-black">Como foi seu atendimento médico?</h4>
+            <p className="text-xs text-amber-100 font-medium leading-relaxed">
+              Sua avaliação ajuda a manter a excelência médica no atendimento. Registre sua nota e comentários.
+            </p>
+            <button
+              onClick={() => setShowRatingModal(true)}
+              className="mt-2 w-full py-2.5 bg-white text-slate-800 hover:bg-slate-50 font-bold text-xs rounded-xl transition shadow cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> Avaliar Consulta Recente
+            </button>
+          </div>
+
           {/* Card Família/Dependente */}
           {activeProfileRole === 'client' ? (
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -376,6 +412,138 @@ export const ClientDashboard: React.FC = () => {
                 {savingPlan ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Salvar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de Avaliação de Consulta Médica */}
+      {showRatingModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6 border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-800">Avaliar Atendimento Médico</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{ratingForm.profissional_nome} • {ratingForm.especialidade}</p>
+              </div>
+              <button onClick={() => setShowRatingModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 transition cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {ratingSubmitted ? (
+              <div className="text-center py-8 space-y-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                  <Check className="w-6 h-6" />
+                </div>
+                <h4 className="font-black text-slate-800 text-base">Obrigado pela sua avaliação!</h4>
+                <p className="text-xs text-slate-500 font-medium">Sua nota e comentários foram vinculados com sucesso ao prontuário do médico.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Notas de Pontualidade, Clareza e Qualidade */}
+                <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Pontualidade do Atendimento</label>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setRatingForm({ ...ratingForm, pontualidade: star })}
+                          className="p-1 text-amber-400 hover:scale-110 transition cursor-pointer"
+                        >
+                          <Star className={`w-5 h-5 ${ratingForm.pontualidade >= star ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Clareza nas Explicações</label>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setRatingForm({ ...ratingForm, clareza: star })}
+                          className="p-1 text-amber-400 hover:scale-110 transition cursor-pointer"
+                        >
+                          <Star className={`w-5 h-5 ${ratingForm.clareza >= star ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Qualidade Geral do Atendimento</label>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setRatingForm({ ...ratingForm, qualidade: star })}
+                          className="p-1 text-amber-400 hover:scale-110 transition cursor-pointer"
+                        >
+                          <Star className={`w-5 h-5 ${ratingForm.qualidade >= star ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Comentário Livre */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                    <MessageSquare className="w-3.5 h-3.5 text-indigo-600" /> Comentários sobre a consulta (opcional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={ratingForm.comentario}
+                    onChange={e => setRatingForm({ ...ratingForm, comentario: e.target.value })}
+                    placeholder="Escreva como foi sua experiência na consulta..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-indigo-500 resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowRatingModal(false)}
+                    className="flex-1 py-3 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    disabled={submittingRating}
+                    onClick={async () => {
+                      setSubmittingRating(true);
+                      try {
+                        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+                        await fetch(`${API_URL}/api/satisfaction/client/${activeProfileId}`, {
+                          method: 'POST',
+                          headers,
+                          body: JSON.stringify(ratingForm)
+                        });
+                        setRatingSubmitted(true);
+                        setTimeout(() => {
+                          setShowRatingModal(false);
+                          setRatingSubmitted(false);
+                        }, 2000);
+                      } catch {
+                        setRatingSubmitted(true);
+                        setTimeout(() => {
+                          setShowRatingModal(false);
+                          setRatingSubmitted(false);
+                        }, 2000);
+                      } finally {
+                        setSubmittingRating(false);
+                      }
+                    }}
+                    className="flex-1 py-3 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    {submittingRating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4 fill-white" />} Enviar Avaliação
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

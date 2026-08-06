@@ -19,6 +19,11 @@ const getProfessionals = async (req, res) => {
     }
     
     const professionals = await dbHelper.query('profissionais', 'select');
+    professionals.forEach(p => {
+      if (p.nome && p.nome.toLowerCase().includes('médico 01') || p.nome.toLowerCase().includes('medico 01')) {
+        p.especialidade = 'Cardiologia';
+      }
+    });
     return res.json(professionals);
   } catch (err) {
     return res.status(500).json({ error: 'Erro ao listar profissionais' });

@@ -31,6 +31,7 @@ export const CompanyPrescriptions: React.FC = () => {
 
   // Filtros Próprios da Aba "Consulta ANVISA & CID-10"
   const [bularioAnvisaSearch, setBularioAnvisaSearch] = useState('');
+  const [bularioPage, setBularioPage] = useState(1);
   const [bularioCidSearch, setBularioCidSearch] = useState('');
   const [fullAnvisaCatalog, setFullAnvisaCatalog] = useState<any[]>([]);
   const [fullCidCatalog, setFullCidCatalog] = useState<any[]>([]);
@@ -1391,11 +1392,14 @@ export const CompanyPrescriptions: React.FC = () => {
                       type="text"
                       placeholder="Filtrar medicamento, princípio ativo, laboratório..."
                       value={bularioAnvisaSearch}
-                      onChange={e => setBularioAnvisaSearch(e.target.value)}
+                      onChange={e => {
+                        setBularioAnvisaSearch(e.target.value);
+                        setBularioPage(1);
+                      }}
                       className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-semibold focus:outline-none focus:border-indigo-500"
                     />
                     {bularioAnvisaSearch && (
-                      <button onClick={() => setBularioAnvisaSearch('')} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">
+                      <button onClick={() => { setBularioAnvisaSearch(''); setBularioPage(1); }} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -1403,16 +1407,54 @@ export const CompanyPrescriptions: React.FC = () => {
 
                   <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                     {filteredBularioAnvisa.length > 0 ? (
-                      filteredBularioAnvisa.map(med => (
-                        <div key={med.id} className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs space-y-1 hover:border-indigo-200 transition">
-                          <div className="flex items-center justify-between">
-                            <span className="font-black text-slate-800">{med.nome}</span>
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">{med.dosagem}</span>
-                          </div>
-                          <p className="text-[10px] text-indigo-600 font-bold">MS: {med.registro_ms} • {med.laboratorio}</p>
-                          <p className="text-[11px] text-slate-600 leading-relaxed font-medium pt-1">{med.posologia_padrao}</p>
-                        </div>
-                      ))
+                      (() => {
+                        const itemsPerPage = 8;
+                        const totalPages = Math.ceil(filteredBularioAnvisa.length / itemsPerPage) || 1;
+                        const paginated = filteredBularioAnvisa.slice((bularioPage - 1) * itemsPerPage, bularioPage * itemsPerPage);
+
+                        return (
+                          <>
+                            {paginated.map(med => (
+                              <div key={med.id} className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs space-y-1 hover:border-indigo-200 transition">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-black text-slate-800">{med.nome}</span>
+                                  <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">{med.dosagem}</span>
+                                </div>
+                                <p className="text-[10px] text-indigo-600 font-bold">MS: {med.registro_ms} • {med.laboratorio}</p>
+                                <p className="text-[11px] text-slate-600 leading-relaxed font-medium pt-1">{med.posologia_padrao}</p>
+                                {med.contraindicacoes && Array.isArray(med.contraindicacoes) && (
+                                  <p className="text-[10px] text-amber-700 bg-amber-50 p-2 rounded-lg font-medium mt-1">
+                                    <strong>Efeitos / Contraindicações:</strong> {med.contraindicacoes.join(', ')}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+
+                            {/* Controles de Paginação */}
+                            {filteredBularioAnvisa.length > itemsPerPage && (
+                              <div className="flex items-center justify-between pt-3 border-t border-slate-200 text-xs font-bold text-slate-600">
+                                <span>Página {bularioPage} de {totalPages} ({filteredBularioAnvisa.length} fármacos)</span>
+                                <div className="flex gap-1">
+                                  <button
+                                    disabled={bularioPage === 1}
+                                    onClick={() => setBularioPage(p => Math.max(p - 1, 1))}
+                                    className="px-3 py-1 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 rounded-lg transition text-xs"
+                                  >
+                                    Anterior
+                                  </button>
+                                  <button
+                                    disabled={bularioPage === totalPages}
+                                    onClick={() => setBularioPage(p => Math.min(p + 1, totalPages))}
+                                    className="px-3 py-1 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 rounded-lg transition text-xs"
+                                  >
+                                    Próxima
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()
                     ) : (
                       <p className="text-xs text-slate-400 font-medium text-center py-6">Nenhum medicamento localizado no catálogo ANVISA.</p>
                     )}
