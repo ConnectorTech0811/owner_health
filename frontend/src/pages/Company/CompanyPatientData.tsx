@@ -3,7 +3,7 @@ import {
   Search, FlaskConical, Pill, Scale, FileText,
   ShieldAlert, ShieldCheck, Download, Calendar, Users, Plus, ArrowLeft,
   Trash2, UserMinus, UserCheck, AlertTriangle, ChevronLeft, ChevronRight,
-  Filter, XCircle, List, LayoutGrid
+  Filter, XCircle, List, LayoutGrid, Eye, X
 } from 'lucide-react';
 import { API_URL } from '../../config';
 import { PatientRegistrationModal } from '../../components/PatientRegistrationModal';
@@ -23,10 +23,10 @@ const formatDatePtBr = (dateStr?: string | null) => {
     }
   }
   try {
-    const d = new Date(str);
-    if (!isNaN(d.getTime())) return d.toLocaleDateString('pt-BR');
+    const p = new Date(str);
+    if (!isNaN(p.getTime())) return p.toLocaleDateString('pt-BR');
   } catch {}
-  return 'Não informada';
+  return dateStr;
 };
 
 export const CompanyPatientData: React.FC = () => {
@@ -36,6 +36,10 @@ export const CompanyPatientData: React.FC = () => {
   const [patientsList, setPatientsList] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showAnamnesisModal, setShowAnamnesisModal] = useState(false);
+
+  const [anamnesisPage, setAnamnesisPage] = useState(1);
+  const [viewAnamnesisModal, setViewAnamnesisModal] = useState<any>(null);
+  const [viewingDocModal, setViewingDocModal] = useState<{ url: string; title: string } | null>(null);
 
   const [filterNome, setFilterNome] = useState('');
   const [filterCpf, setFilterCpf] = useState('');
@@ -402,28 +406,30 @@ export const CompanyPatientData: React.FC = () => {
             <p className="text-[11px] text-slate-400 font-medium mt-1">Pacientes desabilitados</p>
           </div>
 
-          <div 
-            onClick={() => { setQuickFilter('com_acesso'); setShowAllOverride(true); }}
-            className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs hover:shadow-md ${
-              quickFilter === 'com_acesso'
-                ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-500/20'
-                : 'bg-white border-slate-200 hover:border-amber-200'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Acesso a Médicos</span>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-                <ShieldCheck className="w-5 h-5" />
+          {user.tipo_profissional !== 'medico' && (
+            <div 
+              onClick={() => { setQuickFilter('com_acesso'); setShowAllOverride(true); }}
+              className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs hover:shadow-md ${
+                quickFilter === 'com_acesso'
+                  ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-500/20'
+                  : 'bg-white border-slate-200 hover:border-amber-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Acesso a Médicos</span>
+                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
               </div>
+              <div className="mt-3 flex items-baseline justify-between">
+                <span className="text-2xl font-black text-slate-800">{totalComAcesso}</span>
+                <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                  Compartilhados
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium mt-1">Prontuários vinculados a médicos</p>
             </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-2xl font-black text-slate-800">{totalComAcesso}</span>
-              <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                Compartilhados
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-1">Prontuários vinculados a médicos</p>
-          </div>
+          )}
         </div>
       )}
 
@@ -535,16 +541,18 @@ export const CompanyPatientData: React.FC = () => {
               </button>
             )}
 
-            <button
-              onClick={() => { setQuickFilter('com_acesso'); setShowAllOverride(true); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                quickFilter === 'com_acesso'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Com Acesso Médico ({totalComAcesso})
-            </button>
+            {user.tipo_profissional !== 'medico' && (
+              <button
+                onClick={() => { setQuickFilter('com_acesso'); setShowAllOverride(true); }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  quickFilter === 'com_acesso'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Com Acesso Médico ({totalComAcesso})
+              </button>
+            )}
           </div>
 
           {error && (
@@ -1188,10 +1196,10 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
                 {activeTab === 'anamnesis' && (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-black text-slate-800">Histórico de Anamnese</h3>
+                      <h3 className="text-sm font-black text-slate-800">Histórico de Anamnese ({patientData.anamnesis.length})</h3>
                       <button 
                         onClick={() => setShowAnamnesisModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition"
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
                         Nova Solicitação de Anamnese
@@ -1201,46 +1209,78 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
                     {patientData.anamnesis.length === 0 ? (
                       <p className="text-xs text-slate-400 font-semibold italic text-center py-10">O paciente ainda não possui formulários de anamnese preenchidos.</p>
                     ) : (
-                      <div className="space-y-6">
-                        {patientData.anamnesis.map((a: any) => (
-                          <div key={a.id} className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4 shadow-sm">
-                            <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
-                              <span className="text-xs font-black text-indigo-700 uppercase tracking-wider flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-indigo-600" />
-                                {a.tipo === 'estruturada' ? 'Formulário de Anamnese Preenchido' : 'Anamnese Geral'}
-                              </span>
-                              <span className="text-xs font-bold text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200">
-                                {formatDatePtBr(a.criado_em)}
-                              </span>
-                            </div>
+                      <div className="space-y-4">
+                        <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-xs bg-white">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                <th className="py-3 px-4">Data</th>
+                                <th className="py-3 px-4">Formulário / Título</th>
+                                <th className="py-3 px-4">Solicitante</th>
+                                <th className="py-3 px-4">Respostas</th>
+                                <th className="py-3 px-4 text-right">Ação</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs">
+                              {patientData.anamnesis.slice((anamnesisPage - 1) * 10, anamnesisPage * 10).map((a: any, idx: number) => (
+                                <tr key={a.id || idx} className="hover:bg-slate-50/80 transition font-medium text-slate-700">
+                                  <td className="py-3.5 px-4 font-bold text-slate-800 whitespace-nowrap">
+                                    {formatDatePtBr(a.criado_em || a.created_at)}
+                                  </td>
+                                  <td className="py-3.5 px-4 font-black text-indigo-900">
+                                    {a.form_titulo || a.titulo || (a.tipo === 'estruturada' ? 'Formulário de Anamnese' : 'Anamnese Geral')}
+                                  </td>
+                                  <td className="py-3.5 px-4 text-slate-600 font-bold">
+                                    {a.medico_nome || a.solicitado_por || 'Médico / Clínica'}
+                                  </td>
+                                  <td className="py-3.5 px-4">
+                                    {Array.isArray(a.respostas) ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
+                                        {a.respostas.length} perguntas respondidas
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-bold text-slate-500">Formulário Geral</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3.5 px-4 text-right">
+                                    <button
+                                      onClick={() => setViewAnamnesisModal(a)}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition cursor-pointer"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>Visualizar</span>
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
 
-                            {a.tipo === 'estruturada' && Array.isArray(a.respostas) ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                                {a.respostas.map((r: any, idx: number) => (
-                                  <div key={idx} className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{r.pergunta}</p>
-                                    <p className="text-xs font-black text-slate-800 mt-1">{r.resposta || 'Sem resposta'}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-600">
-                                <div className="sm:col-span-2 bg-white p-3 rounded-lg border border-slate-100">
-                                  <p className="text-[10px] text-indigo-600 font-black uppercase">Queixa Principal</p>
-                                  <p className="text-slate-800 font-bold mt-1">{a.queixa_principal || 'Não informada'}</p>
-                                </div>
-                                <div>
-                                  <p className="text-[10px] text-slate-400 font-bold uppercase">Histórico de Doenças</p>
-                                  <p className="text-slate-800 font-bold mt-1">{a.historico_doencas || 'Nenhum'}</p>
-                                </div>
-                                <div>
-                                  <p className="text-[10px] text-slate-400 font-bold uppercase">Alergias</p>
-                                  <p className="text-slate-800 font-bold mt-1">{a.alergias || 'Nenhuma'}</p>
-                                </div>
-                              </div>
-                            )}
+                        {/* Paginação de Anamneses (Máximo 10 por página) */}
+                        {patientData.anamnesis.length > 10 && (
+                          <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-2.5">
+                            <span className="text-xs font-bold text-slate-500">
+                              Página {anamnesisPage} de {Math.ceil(patientData.anamnesis.length / 10)}
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                disabled={anamnesisPage === 1}
+                                onClick={() => setAnamnesisPage(prev => Math.max(prev - 1, 1))}
+                                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-xs font-bold rounded-lg text-slate-600 transition cursor-pointer"
+                              >
+                                Anterior
+                              </button>
+                              <button
+                                disabled={anamnesisPage >= Math.ceil(patientData.anamnesis.length / 10)}
+                                onClick={() => setAnamnesisPage(prev => prev + 1)}
+                                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-xs font-bold rounded-lg text-slate-600 transition cursor-pointer"
+                              >
+                                Próximo
+                              </button>
+                            </div>
                           </div>
-                        ))}
+                        )}
                       </div>
                     )}
                   </div>
@@ -1259,7 +1299,7 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold text-slate-800">{ex.tipo}</span>
                                 <span className="text-[10px] text-slate-400 font-bold">
-                                  {new Date(ex.data + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                  {formatDatePtBr(ex.data || ex.criado_em)}
                                 </span>
                               </div>
                               <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider mt-1">{ex.laboratorio || 'Laboratório N/I'}</p>
@@ -1295,35 +1335,119 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
                       <p className="text-xs text-slate-400 font-semibold italic text-center py-10">Nenhuma receita compartilhada disponível.</p>
                     ) : (
                       <div className="space-y-4">
-                        {patientData.prescriptions.map((p: any) => (
-                          <div key={p.id} className="border border-slate-150 bg-slate-50 p-5 rounded-2xl">
-                            <div className="flex justify-between items-center pb-3 border-b border-slate-200/60 mb-3">
-                              <div>
-                                <p className="text-xs font-bold text-slate-800">Receita por: {p.medico || 'Médico não informado'}</p>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Documento de Prescrição</p>
-                              </div>
-                              <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-                                <Calendar className="w-3.5 h-3.5" />
-                                {new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR')}
-                              </span>
-                            </div>
+                        {patientData.prescriptions.map((p: any) => {
+                          let medsList: any[] = [];
+                          if (Array.isArray(p.medicamentos)) {
+                            medsList = p.medicamentos;
+                          } else if (typeof p.medicamentos === 'string' && p.medicamentos.trim() !== '') {
+                            try {
+                              const parsed = JSON.parse(p.medicamentos);
+                              if (Array.isArray(parsed)) medsList = parsed;
+                              else if (parsed && typeof parsed === 'object') medsList = [parsed];
+                            } catch {
+                              medsList = [];
+                            }
+                          }
 
-                            <div className="space-y-3.5 text-xs font-semibold text-slate-600">
-                              <div>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Medicamentos Ministrados</p>
-                                <p className="text-slate-800 font-black mt-1 leading-relaxed whitespace-pre-line bg-white p-3.5 rounded-xl border border-slate-150">
-                                  {p.medicamentos}
-                                </p>
-                              </div>
-                              {p.observacoes && (
+                          const rawMedsText = typeof p.medicamentos === 'string' ? p.medicamentos.trim() : '';
+                          const obsFull = p.observacoes || '';
+                          const obsText = obsFull.replace(/\[Anexo\]:\s*[^\n]+/gi, '').trim();
+                          const anexoMatch = obsFull.match(/\[Anexo\]:\s*([^\n]+)/i);
+
+                          const rawFile = p.arquivo_url || p.anexo_url || p.arquivo || p.anexo || (anexoMatch ? anexoMatch[1].trim() : '');
+                          const attachmentName = anexoMatch ? anexoMatch[1].trim() : (rawFile ? rawFile.replace(/^.*[\\\/]/, '') : null);
+
+                          let docUrl = '';
+                          if (rawFile) {
+                            if (rawFile.startsWith('http://') || rawFile.startsWith('https://') || rawFile.startsWith('data:')) {
+                              docUrl = rawFile;
+                            } else if (rawFile.startsWith('/')) {
+                              docUrl = `${API_URL}${rawFile}`;
+                            } else {
+                              docUrl = `${API_URL}/uploads/${rawFile}`;
+                            }
+                          }
+
+                          return (
+                            <div key={p.id} className="border border-slate-200 bg-slate-50 p-5 rounded-2xl space-y-4 shadow-xs">
+                              <div className="flex justify-between items-center pb-3 border-b border-slate-200/80">
                                 <div>
-                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Observações/Instruções</p>
-                                  <p className="text-slate-600 mt-1 leading-relaxed">{p.observacoes}</p>
+                                  <p className="text-xs font-black text-slate-800">Receita por: {p.medico || p.medico_nome || 'Médico não informado'}</p>
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Documento de Prescrição</p>
                                 </div>
-                              )}
+                                <span className="text-[10px] text-slate-500 font-bold bg-white px-3 py-1 rounded-full border border-slate-200 flex items-center gap-1">
+                                  <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                                  {formatDatePtBr(p.data || p.criado_em || p.created_at)}
+                                </span>
+                              </div>
+
+                              <div className="space-y-3.5 text-xs font-semibold text-slate-600">
+                                <div>
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Medicamentos Ministrados</p>
+                                  {medsList.length > 0 ? (
+                                    <div className="space-y-2 mt-1">
+                                      {medsList.map((m: any, mIdx: number) => (
+                                        <div key={mIdx} className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col gap-0.5">
+                                          <p className="text-xs font-black text-slate-800">{m.nome || m.medicamento || m.nome_comercial || 'Medicamento'}</p>
+                                          <p className="text-[11px] text-slate-600 font-medium">
+                                            {[m.posologia, m.frequencia, m.quantidade || m.qtd, m.instrucoes].filter(Boolean).join(' • ')}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : rawMedsText && rawMedsText !== '[]' && rawMedsText !== '{}' ? (
+                                    <p className="text-slate-800 font-bold mt-1 leading-relaxed whitespace-pre-line bg-white p-3.5 rounded-xl border border-slate-200">
+                                      {rawMedsText}
+                                    </p>
+                                  ) : (
+                                    <p className="text-slate-400 italic font-medium mt-1 bg-white p-3 rounded-xl border border-slate-200">
+                                      Nenhum medicamento listado.
+                                    </p>
+                                  )}
+                                </div>
+
+                                {obsText && (
+                                  <div>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Observações/Instruções</p>
+                                    <p className="text-slate-700 mt-1 leading-relaxed bg-white p-3 rounded-xl border border-slate-200">{obsText}</p>
+                                  </div>
+                                )}
+
+                                {attachmentName && (
+                                  <div>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-1">Documento Anexo</p>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (!docUrl) {
+                                            alert(`O documento "${attachmentName}" foi indicado como referência no histórico e não possui arquivo PDF armazenado no servidor.`);
+                                            return;
+                                          }
+                                          setViewingDocModal({ url: docUrl, title: attachmentName });
+                                        }}
+                                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 transition cursor-pointer"
+                                      >
+                                        <Eye className="w-4 h-4 text-indigo-600" />
+                                        <span>Visualizar [Anexo]: {attachmentName}</span>
+                                      </button>
+                                      {docUrl && (
+                                        <button
+                                          type="button"
+                                          onClick={() => window.open(docUrl, '_blank')}
+                                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition cursor-pointer"
+                                        >
+                                          <Download className="w-3.5 h-3.5 text-slate-500" />
+                                          <span>Nova Guia</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -1350,7 +1474,7 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
                           <tbody className="divide-y divide-slate-100 font-bold">
                             {patientData.bioimpedance.map((b: any) => (
                               <tr key={b.id} className="hover:bg-slate-50/50">
-                                <td className="px-4 py-3">{new Date(b.data + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                                <td className="px-4 py-3 text-slate-800">{formatDatePtBr(b.data || b.criado_em || b.created_at)}</td>
                                 <td className="px-4 py-3 text-slate-800">{b.peso} kg</td>
                                 <td className="px-4 py-3">{b.imc}</td>
                                 <td className="px-4 py-3 text-red-500">{b.gordura_perc}%</td>
@@ -1381,9 +1505,116 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
           onSuccess={() => {
             setShowAnamnesisModal(false);
             alert('Anamnese enviada com sucesso!');
-            // Ideally we refresh the requests list here
           }}
         />
+      )}
+
+      {/* Modal de Visualização Detalhada da Anamnese Selecionada */}
+      {viewAnamnesisModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fadeIn">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-sm font-black text-slate-800">
+                  {viewAnamnesisModal.form_titulo || viewAnamnesisModal.titulo || 'Formulário de Anamnese'}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Data: <b>{formatDatePtBr(viewAnamnesisModal.criado_em || viewAnamnesisModal.created_at)}</b> • Solicitado por: <b>{viewAnamnesisModal.medico_nome || 'Médico / Clínica'}</b>
+                </p>
+              </div>
+              <button onClick={() => setViewAnamnesisModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              {viewAnamnesisModal.tipo === 'estruturada' && Array.isArray(viewAnamnesisModal.respostas) ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {viewAnamnesisModal.respostas.map((r: any, idx: number) => (
+                    <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{r.pergunta}</p>
+                      <p className="text-xs font-black text-slate-800 leading-relaxed">{r.resposta || 'Sem resposta'}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3 text-xs font-semibold text-slate-700">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <p className="text-[10px] text-indigo-600 font-black uppercase">Queixa Principal</p>
+                    <p className="text-slate-800 font-bold mt-1 leading-relaxed">{viewAnamnesisModal.queixa_principal || 'Não informada'}</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Histórico de Doenças</p>
+                      <p className="text-slate-800 font-bold mt-1">{viewAnamnesisModal.historico_doencas || 'Nenhum'}</p>
+                    </div>
+                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Alergias</p>
+                      <p className="text-slate-800 font-bold mt-1">{viewAnamnesisModal.alergias || 'Nenhuma'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50/50">
+              <button
+                onClick={() => setViewAnamnesisModal(null)}
+                className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Fechar Visualização
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Visualização de Documento Anexo (Médico) */}
+      {viewingDocModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden animate-fadeIn flex flex-col h-[85vh]">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/80 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-5 h-5 text-indigo-600 shrink-0" />
+                <h3 className="text-sm font-black text-slate-800 truncate">
+                  Visualizador de Documento Anexo — {viewingDocModal.title}
+                </h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => window.open(viewingDocModal.url, '_blank')}
+                  className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
+                >
+                  <Download className="w-4 h-4" /> Abrir em Nova Guia
+                </button>
+                <button onClick={() => setViewingDocModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer shrink-0">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-2 flex-1 overflow-hidden bg-slate-900/90 flex items-center justify-center">
+              {viewingDocModal.url.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
+                <img src={viewingDocModal.url} alt={viewingDocModal.title} className="max-h-full max-w-full object-contain rounded-xl" />
+              ) : (
+                <iframe
+                  src={viewingDocModal.url}
+                  className="w-full h-full rounded-xl border border-slate-700 bg-white"
+                  title={viewingDocModal.title}
+                />
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50/80 shrink-0">
+              <button
+                onClick={() => setViewingDocModal(null)}
+                className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Fechar Visualização
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

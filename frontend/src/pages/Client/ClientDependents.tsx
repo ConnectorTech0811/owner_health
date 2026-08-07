@@ -159,15 +159,20 @@ export const ClientDependents: React.FC = () => {
           <button
             onClick={() => {
               if (dependents.length >= 2) {
-                alert('Limite de 2 dependentes excedido para o Plano Free.');
+                alert('Limite de 2 dependentes atingido para a sua conta.');
                 return;
               }
               setShowAddModal(true);
             }}
-            className="flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            disabled={dependents.length >= 2}
+            className={`flex items-center gap-1.5 px-4 py-2 text-white rounded-xl text-xs font-bold transition-all ${
+              dependents.length >= 2
+                ? 'bg-slate-400 cursor-not-allowed opacity-75'
+                : 'bg-blue-600 hover:bg-blue-700 cursor-pointer shadow-xs'
+            }`}
           >
             <Plus className="w-4 h-4" />
-            <span>Adicionar Dependente ({dependents.length}/2)</span>
+            <span>{dependents.length >= 2 ? 'Limite Atingido (2/2)' : `Adicionar Dependente (${dependents.length}/2)`}</span>
           </button>
         )}
       </div>

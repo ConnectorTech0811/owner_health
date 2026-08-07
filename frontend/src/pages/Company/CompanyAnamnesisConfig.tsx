@@ -770,32 +770,41 @@ export const CompanyAnamnesisConfig: React.FC = () => {
                           const topLevel = (section.questions || []).filter(q => !q.parent_option_id);
                           const renderConfigQuestion = (q: Question, qIdx: number, level: number = 0, qNumPrefix: string = '') => {
                             return (
-                              <div key={qIdx} className={`${level > 0 ? 'ml-4 mt-2' : ''}`}>
-                                <div className="flex items-start gap-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:border-violet-300 transition group shadow-2xs">
-                                  <div className="w-5 h-5 mt-0.5 flex-shrink-0 cursor-grab opacity-40 group-hover:opacity-70 transition">
+                              <div key={qIdx} className="w-full min-w-0 mt-2">
+                                <div className={`flex items-start gap-2 max-w-full overflow-hidden transition group ${
+                                  level > 0 
+                                    ? 'p-2.5 sm:p-3 rounded-xl border border-violet-200/90 bg-white shadow-2xs' 
+                                    : 'p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:border-violet-300 shadow-2xs'
+                                }`}>
+                                  <div className="w-4 h-4 mt-1 flex-shrink-0 cursor-grab opacity-40 group-hover:opacity-70 transition">
                                     <GripVertical className="w-full h-full text-slate-400" />
                                   </div>
-                                  <div className="flex-1 min-w-0 space-y-3">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex-1">
-                                        <p className="text-sm font-bold text-slate-800 leading-snug">{q.texto}</p>
-                                        {q.descricao && <p className="text-xs text-slate-400 mt-0.5">{q.descricao}</p>}
+                                  <div className="flex-1 min-w-0 space-y-2.5 overflow-hidden">
+                                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 border-b border-slate-100/80 pb-2">
+                                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        <p className="text-xs sm:text-sm font-black text-slate-800 tracking-tight whitespace-normal">{q.texto}</p>
+                                        {q.descricao && <p className="text-[11px] text-slate-400 truncate hidden sm:block">({q.descricao})</p>}
                                       </div>
-                                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                                      
+                                      <div className="flex items-center gap-1 flex-wrap shrink-0">
                                         {q.obrigatoria && (
-                                          <span className="text-[9px] font-black uppercase text-red-500 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">obrig.</span>
+                                          <span className="text-[8px] sm:text-[9px] font-black uppercase text-red-500 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">obrig.</span>
                                         )}
-                                        {level > 0 && <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">↳ Step Condicional ({qNumPrefix})</span>}
-                                        <span className="flex items-center gap-1 text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full">
+                                        {level > 0 && (
+                                          <span className="text-[8px] sm:text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                            ↳ Step ({qNumPrefix})
+                                          </span>
+                                        )}
+                                        <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full whitespace-nowrap">
                                           {QUESTION_TYPE_MAP[q.tipo]?.icon}
                                           {QUESTION_TYPE_MAP[q.tipo]?.label}
                                         </span>
                                         <button onClick={() => handleEditQuestion(sIdx, section.questions!.indexOf(q))}
-                                          className="w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:border-violet-400 transition cursor-pointer">
+                                          className="w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:border-violet-400 transition cursor-pointer shrink-0">
                                           <Edit3 className="w-3 h-3 text-slate-500" />
                                         </button>
                                         <button onClick={() => handleDeleteQuestion(sIdx, section.questions!.indexOf(q))}
-                                          className="w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:border-red-400 hover:bg-red-50 transition cursor-pointer">
+                                          className="w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:border-red-400 hover:bg-red-50 transition cursor-pointer shrink-0">
                                           <Trash2 className="w-3 h-3 text-slate-400" />
                                         </button>
                                       </div>
@@ -803,30 +812,30 @@ export const CompanyAnamnesisConfig: React.FC = () => {
                                     
                                     {/* Mostrar opções e sub-perguntas condicionais vinculadas a cada opção */}
                                     {needsOptions(q.tipo) && q.options && q.options.length > 0 && (
-                                      <div className="mt-3 space-y-2 bg-white p-3.5 rounded-xl border border-slate-200">
-                                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                                          {qNumPrefix || '1'} - Pergunta do formulário
+                                      <div className="mt-2 space-y-2 bg-slate-50/60 p-2.5 sm:p-3 rounded-xl border border-slate-200/80 max-w-full overflow-hidden">
+                                        <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">
+                                          {qNumPrefix || '1'} - Alternativas do formulário
                                         </p>
                                         {q.options.map((o, oIdx) => {
                                           const childQuestions = (section.questions || []).filter(c => c.parent_option_id != null && String(c.parent_option_id) === String(o.id));
                                           const stepNum = `${qNumPrefix || '1'}.${oIdx + 1}`;
 
                                           return (
-                                            <div key={o.id} className="space-y-2 border border-slate-150 rounded-xl p-3 bg-slate-50/80">
-                                              <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2">
-                                                  <span className="w-2 h-2 rounded-full bg-violet-400"></span>
-                                                  <span className="text-xs font-bold text-slate-700">{o.texto}</span>
+                                            <div key={o.id} className="space-y-2 border border-slate-200/60 rounded-xl p-2 sm:p-2.5 bg-white max-w-full overflow-hidden">
+                                              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                  <span className="w-2 h-2 rounded-full bg-violet-500 shrink-0"></span>
+                                                  <span className="text-xs font-bold text-slate-700 truncate">{o.texto}</span>
                                                 </div>
-                                                <button onClick={() => handleAddQuestion(sIdx, Number(o.id))} className="text-[10px] font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
-                                                  <Plus className="w-3 h-3 text-violet-600" /> {stepNum} Pergunta seguinte
+                                                <button onClick={() => handleAddQuestion(sIdx, Number(o.id))} className="text-[9px] font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2 py-0.5 rounded-lg transition flex items-center gap-1 cursor-pointer shrink-0">
+                                                  <Plus className="w-3 h-3 text-violet-600" /> + {stepNum} Pergunta seguinte
                                                 </button>
                                               </div>
 
                                               {/* Sub-perguntas filhas desta alternativa especificamente */}
                                               {childQuestions.length > 0 && (
-                                                <div className="mt-2 space-y-2 pl-3 border-l-2 border-violet-400">
-                                                  <p className="text-[9px] font-black text-violet-700 uppercase tracking-wider flex items-center gap-1">
+                                                <div className="mt-1.5 space-y-1.5 pl-2 sm:pl-3 border-l-2 border-violet-400 max-w-full overflow-hidden">
+                                                  <p className="text-[8px] sm:text-[9px] font-black text-violet-700 uppercase tracking-wider flex items-center gap-1">
                                                     <span>↳ SE ESCOLHER "{o.texto.toUpperCase()}", RESPONDER TAMBÉM:</span>
                                                   </p>
                                                   {childQuestions.map(child => renderConfigQuestion(child, section.questions!.indexOf(child), level + 1, stepNum))}
@@ -1464,67 +1473,69 @@ export const CompanyAnamnesisConfig: React.FC = () => {
                           const topLevel = (sec.questions || []).filter(q => !q.parent_option_id);
                           const renderCustomConfigQ = (q: Question, qIdx: number, level: number = 0, qNumPrefix: string = '') => {
                             return (
-                              <div key={q.id || qIdx} className={`${level > 0 ? 'ml-4 mt-2' : ''}`}>
-                                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:border-violet-300 transition space-y-3 shadow-2xs">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-xs font-black text-slate-800">{q.texto}</p>
-                                        {q.obrigatoria && <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">* Obrigatória</span>}
-                                        {level > 0 && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">↳ Step Condicional ({qNumPrefix})</span>}
-                                      </div>
-                                      <span className="inline-block text-[9px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full mt-1">
+                              <div key={q.id || qIdx} className="w-full min-w-0 mt-2">
+                                <div className={`flex flex-col space-y-2.5 max-w-full overflow-hidden transition ${
+                                  level > 0 
+                                    ? 'p-2.5 sm:p-3 rounded-xl border border-violet-200/90 bg-white shadow-2xs' 
+                                    : 'p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:border-violet-300 shadow-2xs'
+                                }`}>
+                                  <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 border-b border-slate-100/80 pb-2">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <p className="text-xs sm:text-sm font-black text-slate-800 tracking-tight whitespace-normal">{q.texto}</p>
+                                      {q.obrigatoria && <span className="text-[8px] sm:text-[9px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">* Obrigatória</span>}
+                                      {level > 0 && <span className="text-[8px] sm:text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full whitespace-nowrap">↳ Step ({qNumPrefix})</span>}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span className="inline-block text-[9px] sm:text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full whitespace-nowrap">
                                         {QUESTION_TYPE_MAP[q.tipo]?.label || q.tipo}
                                       </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5">
                                       <button
                                         onClick={() => setModalQuestion({ sectionIdx: secIdx, question: q, isCustom: true })}
-                                        className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-violet-600 hover:border-violet-300 transition cursor-pointer"
+                                        className="p-1 rounded-md bg-white border border-slate-200 text-slate-500 hover:text-violet-600 hover:border-violet-300 transition cursor-pointer shrink-0"
                                         title="Editar Pergunta"
                                       >
-                                        <Edit3 className="w-3.5 h-3.5" />
+                                        <Edit3 className="w-3 h-3" />
                                       </button>
                                       <button
                                         onClick={() => handleRemoveCustomQuestion(secIdx, sec.questions!.indexOf(q))}
-                                        className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition cursor-pointer"
+                                        className="p-1 rounded-md bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition cursor-pointer shrink-0"
                                         title="Remover Pergunta"
                                       >
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <Trash2 className="w-3 h-3" />
                                       </button>
                                     </div>
                                   </div>
 
                                   {/* Opções & Botão de + Step (Lógica por alternativa) */}
                                   {needsOptions(q.tipo) && q.options && q.options.length > 0 && (
-                                    <div className="mt-3 space-y-2 bg-white p-3.5 rounded-xl border border-slate-200">
-                                      <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                                        {qNumPrefix || '1'} - Pergunta do formulário
+                                    <div className="mt-2 space-y-2 bg-slate-50/60 p-2.5 sm:p-3 rounded-xl border border-slate-200/80 max-w-full overflow-hidden">
+                                      <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">
+                                        {qNumPrefix || '1'} - Alternativas do formulário
                                       </p>
                                       {q.options.map((o, oIdx) => {
                                         const childQuestions = (sec.questions || []).filter(c => c.parent_option_id != null && String(c.parent_option_id) === String(o.id));
                                         const stepNum = `${qNumPrefix || '1'}.${oIdx + 1}`;
 
                                         return (
-                                          <div key={o.id || oIdx} className="space-y-2 border border-slate-150 rounded-xl p-3 bg-slate-50/80">
-                                            <div className="flex items-center justify-between gap-2">
-                                              <div className="flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full bg-violet-400"></span>
-                                                <span className="text-xs font-bold text-slate-700">{o.texto}</span>
+                                          <div key={o.id || oIdx} className="space-y-2 border border-slate-200/60 rounded-xl p-2 sm:p-2.5 bg-white max-w-full overflow-hidden">
+                                            <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                <span className="w-2 h-2 rounded-full bg-violet-500 shrink-0"></span>
+                                                <span className="text-xs font-bold text-slate-700 truncate">{o.texto}</span>
                                               </div>
                                               <button
                                                 onClick={() => setModalQuestion({ sectionIdx: secIdx, question: null, parentOptionId: o.id, isCustom: true })}
-                                                className="text-[10px] font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                                                className="text-[9px] font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2 py-0.5 rounded-lg transition flex items-center gap-1 cursor-pointer shrink-0"
                                               >
-                                                <Plus className="w-3 h-3 text-violet-600" /> {stepNum} Pergunta seguinte
+                                                <Plus className="w-3 h-3 text-violet-600" /> + {stepNum} Pergunta seguinte
                                               </button>
                                             </div>
 
                                             {/* Sub-perguntas filhas desta alternativa especificamente */}
                                             {childQuestions.length > 0 && (
-                                              <div className="mt-2 space-y-2 pl-3 border-l-2 border-violet-400">
-                                                <p className="text-[9px] font-black text-violet-700 uppercase tracking-wider flex items-center gap-1">
+                                              <div className="mt-1.5 space-y-1.5 pl-2 sm:pl-3 border-l-2 border-violet-400 max-w-full overflow-hidden">
+                                                <p className="text-[8px] sm:text-[9px] font-black text-violet-700 uppercase tracking-wider flex items-center gap-1">
                                                   <span>↳ SE ESCOLHER "{o.texto.toUpperCase()}", RESPONDER TAMBÉM:</span>
                                                 </p>
                                                 {childQuestions.map(child => renderCustomConfigQ(child, sec.questions!.indexOf(child), level + 1, stepNum))}

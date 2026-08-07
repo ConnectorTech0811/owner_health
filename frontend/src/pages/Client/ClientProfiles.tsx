@@ -95,6 +95,13 @@ export const ClientProfiles: React.FC = () => {
 
   const handleAddDependent = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const dependentsCount = profiles.filter(p => p.role === 'dependent').length;
+    if (dependentsCount >= 2) {
+      setAddError('Limite de dependentes excedido (máximo de 2 dependentes por conta).');
+      return;
+    }
+
     if (!depForm.nome || !depForm.cpf || !depForm.data_nascimento) {
       setAddError('Preencha os campos obrigatórios (Nome, CPF e Data de Nascimento)');
       return;
@@ -207,20 +214,46 @@ export const ClientProfiles: React.FC = () => {
           ))}
 
           {/* Adicionar Dependente Card */}
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex flex-col items-center group cursor-pointer border-none bg-transparent outline-none focus:outline-none"
-          >
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-400 group-hover:text-white bg-slate-900/80 hover:bg-slate-900 border-2 border-dashed border-slate-700 group-hover:border-blue-500 transition-all transform group-hover:scale-105 shadow-xl">
-              <Plus className="w-8 h-8 text-blue-400 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="mt-4 text-xs md:text-sm font-bold text-slate-400 group-hover:text-blue-400 transition-colors">
-              Adicionar Perfil
-            </span>
-            <span className="mt-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold text-slate-500 bg-slate-900 border border-slate-800">
-              + Dependente
-            </span>
-          </button>
+          {(() => {
+            const dependentsCount = profiles.filter(p => p.role === 'dependent').length;
+            const isLimitReached = dependentsCount >= 2;
+
+            return (
+              <button
+                onClick={() => {
+                  if (isLimitReached) {
+                    alert('Limite de dependentes atingido! No seu plano atual você pode cadastrar no máximo 2 dependentes.');
+                    return;
+                  }
+                  setShowAddModal(true);
+                }}
+                title={isLimitReached ? 'Limite máximo de 2 dependentes atingido' : 'Adicionar novo dependente'}
+                className={`flex flex-col items-center group border-none bg-transparent outline-none focus:outline-none ${
+                  isLimitReached ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                }`}
+              >
+                <div className={`w-24 h-24 md:w-32 md:h-32 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all transform shadow-xl ${
+                  isLimitReached
+                    ? 'bg-slate-900/40 border-2 border-dashed border-slate-800 text-slate-600'
+                    : 'text-slate-400 group-hover:text-white bg-slate-900/80 hover:bg-slate-900 border-2 border-dashed border-slate-700 group-hover:border-blue-500 group-hover:scale-105'
+                }`}>
+                  <Plus className={`w-8 h-8 ${isLimitReached ? 'text-slate-600' : 'text-blue-400 group-hover:scale-110'} transition-transform`} />
+                </div>
+                <span className={`mt-4 text-xs md:text-sm font-bold transition-colors ${
+                  isLimitReached ? 'text-slate-500' : 'text-slate-400 group-hover:text-blue-400'
+                }`}>
+                  Adicionar Perfil
+                </span>
+                <span className={`mt-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                  isLimitReached
+                    ? 'bg-amber-950/80 text-amber-400 border border-amber-800/60'
+                    : 'bg-slate-900 text-slate-500 border border-slate-800'
+                }`}>
+                  {isLimitReached ? 'Limite 2/2 Atingido' : '+ Dependente'}
+                </span>
+              </button>
+            );
+          })()}
         </div>
       </main>
 

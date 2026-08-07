@@ -259,6 +259,30 @@ const getClientRequests = async (req, res) => {
       .where({ cliente_id })
       .orderBy('criado_em', 'desc')
       .select();
+
+    for (const r of requests) {
+      // Buscar título real do formulário/seção
+      if (!r.form_titulo && !r.titulo) {
+        const sec = await db('patient_anamnesis_sections')
+          .where({ request_id: r.id })
+          .orderBy('ordem', 'asc')
+          .first();
+        if (sec && sec.titulo) {
+          r.form_titulo = sec.titulo;
+        } else {
+          r.form_titulo = 'Anamnese de Avaliação Clínica';
+        }
+      }
+
+      // Buscar nome do médico/profissional que solicitou
+      if (r.medico_id) {
+        const doc = await db('profissionais').where({ id: r.medico_id }).first();
+        if (doc) {
+          r.medico_nome = doc.nome;
+        }
+      }
+    }
+
     return res.json(requests);
   } catch (err) {
     console.error('Erro em getClientRequests:', err);

@@ -50,14 +50,12 @@ const addDependent = async (req, res) => {
     }
     const client = clients[0];
 
-    // Verificar se atingiu o limite de dependentes para plano Free (máximo 2 dependentes)
-    if (client.plano_tipo === 'free') {
-      const existingDependents = await dbHelper.query('dependentes', 'select', { cliente_id: client.id });
-      if (existingDependents.length >= 2) {
-        return res.status(400).json({
-          error: 'Limite de dependentes excedido. No plano Free você pode cadastrar no máximo 2 dependentes.'
-        });
-      }
+    // Verificar se atingiu o limite de dependentes (máximo 2 dependentes)
+    const existingDependents = await dbHelper.query('dependentes', 'select', { cliente_id: client.id });
+    if (existingDependents.length >= 2) {
+      return res.status(400).json({
+        error: 'Limite de dependentes excedido. Você pode cadastrar no máximo 2 dependentes por conta.'
+      });
     }
 
     let userId = null;

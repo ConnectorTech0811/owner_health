@@ -83,9 +83,37 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
 
   const menuItems = buildMenu();
 
-  const NavItem = ({ item, onClick }: { item: MenuItem; onClick?: () => void }) => {
+  const NavItem = ({ item, isCollapsed, onClick }: { item: MenuItem; isCollapsed?: boolean; onClick?: () => void }) => {
     const Icon = item.icon;
     const isActive = location.pathname === item.path;
+
+    if (isCollapsed) {
+      return (
+        <button
+          key={item.path}
+          onClick={() => {
+            if ((window as any).__anamnesisIsDirty && typeof (window as any).__onUnsavedExitAttempt === 'function') {
+              (window as any).__onUnsavedExitAttempt(item.path);
+              return;
+            }
+            navigate(item.path);
+            onClick?.();
+          }}
+          title={item.label}
+          className={`w-11 h-11 mx-auto flex items-center justify-center rounded-2xl transition-all cursor-pointer relative group ${
+            isActive
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-105 font-bold'
+              : 'hover:bg-slate-800 hover:text-slate-100 text-slate-400'
+          }`}
+        >
+          <Icon className="w-5 h-5 shrink-0" />
+          <span className="absolute left-full ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+            {item.label}
+          </span>
+        </button>
+      );
+    }
+
     return (
       <button
         key={item.path}
@@ -109,35 +137,54 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
     );
   };
 
-  const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
+  const SidebarContent = ({ isCollapsed, onNavigate }: { isCollapsed?: boolean; onNavigate?: () => void }) => (
     <>
-      <nav className="flex-1 min-h-0 px-4 py-4 space-y-1 overflow-y-auto">
+      <nav className={`flex-1 min-h-0 overflow-y-auto ${isCollapsed ? 'py-4 space-y-3 px-2 flex flex-col items-center' : 'px-4 py-4 space-y-1'}`}>
         {menuItems.map((item) => (
-          <NavItem key={item.path} item={item} onClick={onNavigate} />
+          <NavItem key={item.path} item={item} isCollapsed={isCollapsed} onClick={onNavigate} />
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col gap-2 shrink-0">
-        <button onClick={() => setProfileOpen(true)} className="w-full flex items-center gap-3 px-2 py-1.5 bg-slate-900/40 hover:bg-slate-800 transition rounded-lg border border-slate-800/60 mb-1 text-left cursor-pointer">
-          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-black text-white shrink-0">
+      {isCollapsed ? (
+        <div className="p-3 border-t border-slate-800 bg-slate-950 flex flex-col items-center gap-3 shrink-0">
+          <button
+            onClick={() => setProfileOpen(true)}
+            title={user.name || user.email}
+            className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-black text-white cursor-pointer hover:scale-105 transition"
+          >
             {(user.name?.[0] || user.email?.[0] || 'P').toUpperCase()}
-          </div>
-          <div className="truncate flex-1">
-            <p className="text-xs font-bold text-slate-200 truncate">{user.name || user.email}</p>
-            <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mt-0.5">
-              {formatRoleName(tipo, user.name || user.nome || user.email)}
-            </p>
-          </div>
-        </button>
+          </button>
+          <button
+            onClick={handleLogout}
+            title="Sair"
+            className="w-10 h-10 rounded-xl hover:bg-red-500/10 text-slate-400 hover:text-red-400 flex items-center justify-center transition cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col gap-2 shrink-0">
+          <button onClick={() => setProfileOpen(true)} className="w-full flex items-center gap-3 px-2 py-1.5 bg-slate-900/40 hover:bg-slate-800 transition rounded-lg border border-slate-800/60 mb-1 text-left cursor-pointer">
+            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-black text-white shrink-0">
+              {(user.name?.[0] || user.email?.[0] || 'P').toUpperCase()}
+            </div>
+            <div className="truncate flex-1">
+              <p className="text-xs font-bold text-slate-200 truncate">{user.name || user.email}</p>
+              <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mt-0.5">
+                {formatRoleName(tipo, user.name || user.nome || user.email)}
+              </p>
+            </div>
+          </button>
 
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-red-500/10 hover:text-red-400 text-slate-400 transition-all text-left cursor-pointer"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          <span>Sair</span>
-        </button>
-      </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-red-500/10 hover:text-red-400 text-slate-400 transition-all text-left cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sair</span>
+          </button>
+        </div>
+      )}
     </>
   );
 
@@ -146,15 +193,17 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
       {profileOpen && <ProfileModal user={user} onClose={() => setProfileOpen(false)} />}
       <div className="h-screen overflow-hidden bg-slate-100 flex flex-col md:flex-row font-sans">
       {/* Sidebar - Desktop */}
-      <aside className={`hidden md:flex flex-col bg-slate-900 text-slate-300 border-r border-slate-800 shrink-0 transition-all duration-300 ${desktopMenuOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 border-r-0 overflow-hidden'}`}>
-        <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-800 bg-slate-950 whitespace-nowrap">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600 shrink-0">
+      <aside className={`hidden md:flex flex-col bg-slate-900 text-slate-300 border-r border-slate-800 shrink-0 transition-all duration-300 ${desktopMenuOpen ? 'w-64' : 'w-20'}`}>
+        <div className={`h-16 flex items-center border-b border-slate-800 bg-slate-950 ${desktopMenuOpen ? 'px-6 gap-3 whitespace-nowrap' : 'justify-center'}`}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-600 shrink-0 shadow-md">
             <HeartPulse className="w-5 h-5 text-white" />
           </div>
-          <span className="font-black text-white tracking-wide text-md">Owner Health</span>
+          {desktopMenuOpen && (
+            <span className="font-black text-white tracking-wide text-md">Owner Health</span>
+          )}
         </div>
-        <div className="flex-1 flex flex-col w-64 h-[calc(100vh-4rem)]">
-          <SidebarContent />
+        <div className={`flex-1 flex flex-col h-[calc(100vh-4rem)] ${desktopMenuOpen ? 'w-64' : 'w-20'}`}>
+          <SidebarContent isCollapsed={!desktopMenuOpen} />
         </div>
       </aside>
 

@@ -688,9 +688,10 @@ export const ClientAnamnesis: React.FC = () => {
                             <FileText className="w-6 h-6" />
                           </div>
                           <div>
-                            <p className="font-bold text-slate-800">Anamnese #{r.id}</p>
+                            <p className="font-bold text-slate-800">{r.form_titulo || r.titulo || `Ficha de Anamnese #${r.id}`}</p>
                             <p className="text-xs text-slate-500 mt-0.5">
                               Respondido em: {new Date(r.respondido_em || r.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                              {r.medico_nome && <span className="font-semibold text-violet-600 block text-[11px] mt-0.5">Solicitado por: Dr(a). {r.medico_nome}</span>}
                             </p>
                           </div>
                         </div>
