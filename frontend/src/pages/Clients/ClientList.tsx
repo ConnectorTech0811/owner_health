@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, X, User, Mail, Lock, Calendar, Phone, MapPin, Hash, Loader2, Save, Eye, EyeOff, Eye as EyeIcon } from 'lucide-react';
+import { Users, Plus, X, User, Mail, Lock, Calendar, Phone, MapPin, Hash, Loader2, Save, Eye, EyeOff, Eye as EyeIcon, Search } from 'lucide-react';
 import { API_URL } from '../../config';
 
 // Mascara CPF: 000.000.000-00
@@ -20,6 +20,9 @@ export const ClientList: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
   const [viewingClient, setViewingClient] = useState<any>(null);
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'ativo' | 'inativo'>('todos');
+  const [paymentFilter, setPaymentFilter] = useState<'todos' | 'pago' | 'pendente'>('todos');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const token = localStorage.getItem('token');
 
@@ -93,7 +96,7 @@ export const ClientList: React.FC = () => {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/clients`, {
+      const response = await fetch(`${API_URL}/api/clients?incluir_inativos=true`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -210,6 +213,45 @@ export const ClientList: React.FC = () => {
         </button>
       </div>
 
+      {/* Barra de Busca e Filtros Avançados */}
+      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+          {/* Busca por Nome, CPF, Contato */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Buscar cliente por nome, CPF, e-mail ou celular..."
+              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-xs font-medium focus:outline-none focus:border-primary-500 transition shadow-2xs"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Filtros em Abas */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 text-xs">
+              <span className="px-2 font-bold text-slate-400 text-[10px] uppercase">Status:</span>
+              <button onClick={() => setStatusFilter('todos')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${statusFilter === 'todos' ? 'bg-primary-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Todos</button>
+              <button onClick={() => setStatusFilter('ativo')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${statusFilter === 'ativo' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Ativos</button>
+              <button onClick={() => setStatusFilter('inativo')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${statusFilter === 'inativo' ? 'bg-red-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Inativos</button>
+            </div>
+
+            <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 text-xs">
+              <span className="px-2 font-bold text-slate-400 text-[10px] uppercase">Pagamento:</span>
+              <button onClick={() => setPaymentFilter('todos')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${paymentFilter === 'todos' ? 'bg-primary-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Todos</button>
+              <button onClick={() => setPaymentFilter('pago')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${paymentFilter === 'pago' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Pagos</button>
+              <button onClick={() => setPaymentFilter('pendente')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${paymentFilter === 'pendente' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Pendentes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {clients.length === 0 ? (
         <div className="text-center py-10 border border-dashed border-slate-100 rounded-2xl">
           <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
@@ -231,7 +273,32 @@ export const ClientList: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold">
-              {clients.map(client => (
+              {clients
+                .filter(c => {
+                  const s = c.status || 'ativo';
+                  if (statusFilter === 'ativo' && s !== 'ativo') return false;
+                  if (statusFilter === 'inativo' && s !== 'inativo') return false;
+
+                  const p = c.pagamento_status || 'pago';
+                  if (paymentFilter === 'pago' && p !== 'pago') return false;
+                  if (paymentFilter === 'pendente' && p !== 'pendente') return false;
+
+                  if (searchTerm.trim()) {
+                    const term = searchTerm.toLowerCase().trim();
+                    const cleanTerm = term.replace(/\D/g, '');
+
+                    const nameMatch = (c.nome || '').toLowerCase().includes(term);
+                    const emailMatch = (c.email || '').toLowerCase().includes(term);
+                    const cpfMatch = cleanTerm ? (c.cpf || '').replace(/\D/g, '').includes(cleanTerm) : (c.cpf || '').toLowerCase().includes(term);
+                    const phoneMatch = cleanTerm ? (c.celular || '').replace(/\D/g, '').includes(cleanTerm) : (c.celular || '').toLowerCase().includes(term);
+                    const planMatch = (c.plano_empresa || '').toLowerCase().includes(term) || (c.plano_nome || '').toLowerCase().includes(term);
+
+                    if (!nameMatch && !emailMatch && !cpfMatch && !phoneMatch && !planMatch) return false;
+                  }
+
+                  return true;
+                })
+                .map(client => (
                 <tr key={client.id} className="hover:bg-slate-50/50">
                   <td className="p-4">{client.nome}</td>
                   <td className="p-4">{client.cpf}</td>

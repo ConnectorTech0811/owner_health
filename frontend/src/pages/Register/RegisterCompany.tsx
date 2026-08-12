@@ -1,4 +1,4 @@
-import { isValidCNPJ, formatCNPJ,  } from '../../utils/validators';
+import { isValidCNPJ, formatCNPJ, isValidCPF, formatCPF } from '../../utils/validators';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -76,6 +76,9 @@ export const RegisterCompany: React.FC = () => {
     if (step === 1) {
       if (!form.nome_responsavel || !form.cpf_responsavel || !form.email) {
         setError('Preencha nome, CPF e e-mail do responsável'); return;
+      }
+      if (!isValidCPF(form.cpf_responsavel)) {
+        setError('CPF do responsável inválido. Informe um CPF válido com 11 dígitos.'); return;
       }
     }
     setStep(s => s + 1);
@@ -228,9 +231,35 @@ export const RegisterCompany: React.FC = () => {
                   placeholder="Nome completo" color="violet" colSpan />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <F label="CPF do Responsável *" id="cpf_responsavel" value={form.cpf_responsavel}
-                  onChange={v => sf('cpf_responsavel', v)} icon={<User className="w-4 h-4" />}
-                  placeholder="000.000.000-00" color="violet" />
+                <div>
+                  <F 
+                    label="CPF do Responsável *" 
+                    id="cpf_responsavel" 
+                    value={form.cpf_responsavel}
+                    isValid={form.cpf_responsavel ? (form.cpf_responsavel.replace(/\D/g, '').length === 11 ? isValidCPF(form.cpf_responsavel) : false) : null}
+                    onChange={v => sf('cpf_responsavel', formatCPF(v))} 
+                    icon={<User className="w-4 h-4" />}
+                    placeholder="000.000.000-00" 
+                    color="violet" 
+                  />
+                  {form.cpf_responsavel && (
+                    <div className="mt-1.5 text-[11px] font-bold">
+                      {form.cpf_responsavel.replace(/\D/g, '').length < 11 ? (
+                        <span className="text-amber-600 flex items-center gap-1">
+                          ⚠️ Digite os 11 números do CPF ({form.cpf_responsavel.replace(/\D/g, '').length}/11)
+                        </span>
+                      ) : isValidCPF(form.cpf_responsavel) ? (
+                        <span className="text-emerald-600 flex items-center gap-1">
+                          ✓ CPF Válido
+                        </span>
+                      ) : (
+                        <span className="text-red-600 flex items-center gap-1">
+                          ✖ CPF Inválido (número não reconhecido)
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <F label="Cargo" id="cargo_responsavel" value={form.cargo_responsavel}
                   onChange={v => sf('cargo_responsavel', v)} placeholder="Diretor, Administrador..." color="violet" />
               </div>

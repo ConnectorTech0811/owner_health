@@ -264,6 +264,16 @@ export const NotificationBell: React.FC = () => {
                           </a>
                         </div>
                       )}
+                      {notif.tipo === 'documento_emitido' && (
+                        <div className="mt-2">
+                          <a
+                            href={`/client/prescriptions?viewId=${notif.referencia_id || ''}`}
+                            className="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-xs"
+                          >
+                            Visualizar Documento
+                          </a>
+                        </div>
+                      )}
                     </div>
                     <div className="shrink-0 flex flex-col items-center gap-2">
                       {notif.lida === 0 && notif.tipo !== 'acao_necessaria' && (
@@ -325,6 +335,14 @@ export const NotificationBell: React.FC = () => {
                     className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center"
                   >
                     Ver Prontuário
+                  </a>
+                )}
+                {selectedNotification.tipo === 'documento_emitido' && (
+                  <a
+                    href={`/client/prescriptions?viewId=${selectedNotification.referencia_id || ''}`}
+                    className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center"
+                  >
+                    Visualizar Documento
                   </a>
                 )}
                 <button onClick={() => setSelectedNotification(null)} className="px-6 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-300 transition-colors">

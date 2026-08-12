@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Stethoscope, Plus, Trash2, Mail, Lock, User, Calendar, MapPin, Phone,
-  Hash, Loader2, ToggleLeft, ToggleRight, ShieldAlert, Eye, EyeOff, X
+  Hash, Loader2, ToggleLeft, ToggleRight, ShieldAlert, Eye, EyeOff, X, Search
 } from 'lucide-react';
 import { API_URL } from '../../config';
 
@@ -49,6 +49,9 @@ export const ProfessionalList: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [viewingProf, setViewingProf] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('todos');
+  const [accessFilter, setAccessFilter] = useState<'todos' | 'ativo' | 'bloqueado'>('todos');
 
   const userRaw = localStorage.getItem('user');
   const user = userRaw ? JSON.parse(userRaw) : { email: '', roles: ['client'] };
@@ -262,6 +265,50 @@ export const ProfessionalList: React.FC = () => {
         )}
       </div>
 
+      {/* Barra de Busca e Filtros Avançados */}
+      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+          {/* Busca por Nome, CPF, Conselho/CRM, Especialidade, E-mail, Celular */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Buscar profissional por nome, CPF, CRM/conselho, especialidade ou contato..."
+              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-xs font-medium focus:outline-none focus:border-primary-500 transition shadow-2xs"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Filtro por Categoria / Tipo */}
+          <div className="flex items-center gap-2">
+            <select
+              value={typeFilter}
+              onChange={e => setTypeFilter(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:border-primary-500 cursor-pointer"
+            >
+              <option value="todos">Todos os Tipos</option>
+              {TIPOS_PROFISSIONAL.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+
+            {/* Filtro de Acesso */}
+            <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 text-xs">
+              <span className="px-2 font-bold text-slate-400 text-[10px] uppercase">Acesso:</span>
+              <button onClick={() => setAccessFilter('todos')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${accessFilter === 'todos' ? 'bg-primary-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Todos</button>
+              <button onClick={() => setAccessFilter('ativo')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${accessFilter === 'ativo' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Ativos</button>
+              <button onClick={() => setAccessFilter('bloqueado')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${accessFilter === 'bloqueado' ? 'bg-red-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Bloqueados</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {professionals.length === 0 ? (
         <div className="text-center py-10 border border-dashed border-slate-100 rounded-2xl">
           <Stethoscope className="w-10 h-10 text-slate-300 mx-auto mb-2" />
@@ -281,7 +328,34 @@ export const ProfessionalList: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold">
-              {professionals.map(prof => (
+              {professionals
+                .filter(prof => {
+                  const isAtivo = prof.ativo !== false && prof.ativo !== 0;
+                  if (accessFilter === 'ativo' && !isAtivo) return false;
+                  if (accessFilter === 'bloqueado' && isAtivo) return false;
+
+                  if (typeFilter !== 'todos' && (prof.tipo_profissional || 'medico') !== typeFilter) return false;
+
+                  if (searchTerm.trim()) {
+                    const term = searchTerm.toLowerCase().trim();
+                    const cleanTerm = term.replace(/\D/g, '');
+
+                    const matchName = (prof.nome || '').toLowerCase().includes(term);
+                    const matchTipo = (prof.tipo_profissional || '').toLowerCase().includes(term);
+                    const matchConselho = (prof.numero_conselho || '').toLowerCase().includes(term);
+                    const matchEspecialidade = (prof.especialidade || '').toLowerCase().includes(term);
+                    const matchEmail = (prof.email || '').toLowerCase().includes(term);
+                    const matchCpf = cleanTerm ? (prof.cpf || '').replace(/\D/g, '').includes(cleanTerm) : (prof.cpf || '').toLowerCase().includes(term);
+                    const matchPhone = cleanTerm ? (prof.celular || '').replace(/\D/g, '').includes(cleanTerm) : (prof.celular || '').toLowerCase().includes(term);
+
+                    if (!matchName && !matchTipo && !matchConselho && !matchEspecialidade && !matchEmail && !matchCpf && !matchPhone) {
+                      return false;
+                    }
+                  }
+
+                  return true;
+                })
+                .map(prof => (
                 <tr key={prof.id} className={`hover:bg-slate-50/50 transition-colors ${prof.ativo === false ? 'opacity-50' : ''}`}>
                   <td className="p-4">
                     <p className="font-bold text-slate-800">{prof.nome}</p>

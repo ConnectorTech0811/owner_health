@@ -130,6 +130,7 @@ const registerProfessional = async (req, res) => {
     estado,
     numero_conselho,
     tipo_profissional, // médico, fisioterapeuta, nutricionista, psicólogo, fonoaudiólogo, terapeuta
+    especialidade,
     email,
     celular,
     senha,
@@ -189,6 +190,7 @@ const registerProfessional = async (req, res) => {
       estado: estado || '',
       numero_conselho,
       tipo_profissional: tipo_profissional || null,
+      especialidade: especialidade || null,
       email,
       celular,
       valor_consulta: req.body.valor_consulta ? parseFloat(req.body.valor_consulta) : 150.00,
@@ -227,7 +229,7 @@ const updateProfessional = async (req, res) => {
   const { id } = req.params;
   let {
     nome, cpf, data_nascimento, endereco, cep, logradouro, numero, complemento, bairro, cidade, estado,
-    numero_conselho, tipo_profissional, email, celular, senha
+    numero_conselho, tipo_profissional, especialidade, email, celular, senha
   } = req.body;
 
   if (!endereco && logradouro && numero && estado && cep) {
@@ -264,6 +266,7 @@ const updateProfessional = async (req, res) => {
       estado: estado !== undefined ? estado : prof.estado,
       numero_conselho: numero_conselho !== undefined ? numero_conselho : prof.numero_conselho,
       tipo_profissional: tipo_profissional || prof.tipo_profissional,
+      especialidade: especialidade !== undefined ? especialidade : prof.especialidade,
       email: email || prof.email,
       celular: celular || prof.celular,
       valor_consulta: req.body.valor_consulta !== undefined ? parseFloat(req.body.valor_consulta) : prof.valor_consulta

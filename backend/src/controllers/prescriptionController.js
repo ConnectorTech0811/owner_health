@@ -294,6 +294,59 @@ const issuePrescription = async (req, res) => {
       });
     } catch {}
 
+    // Notificação ao Paciente (caso cadastrado)
+    try {
+      let targetUserId = null;
+      let clients = [];
+      try {
+        if (cliente_id) {
+          clients = await db('clientes').where({ id: parseInt(cliente_id) }).select('usuario_id');
+        } else if (paciente_cpf) {
+          const cleanCpf = paciente_cpf.replace(/\D/g, '');
+          clients = await db('clientes').where({ cpf: cleanCpf }).select('usuario_id');
+        }
+      } catch {
+        if (cliente_id) {
+          clients = await dbHelper.query('clientes', 'select', { id: parseInt(cliente_id) });
+        } else if (paciente_cpf) {
+          const cleanCpf = paciente_cpf.replace(/\D/g, '');
+          clients = await dbHelper.query('clientes', 'select', { cpf: cleanCpf });
+        }
+      }
+
+      if (clients && clients.length > 0 && clients[0].usuario_id) {
+        targetUserId = clients[0].usuario_id;
+      }
+
+      if (targetUserId) {
+        const docNameStr = tipo === 'atestado' ? 'um atestado médico' : 'uma receita médica';
+        const formattedDate = new Date(dataEmissao).toLocaleString('pt-BR');
+        const notifMsg = `Você recebeu ${docNameStr} emitido por ${medico_nome || 'Dr. Médico'} em ${formattedDate}.`;
+        
+        try {
+          await db('notificacoes_usuarios').insert({
+            usuario_id: targetUserId,
+            mensagem: notifMsg,
+            tipo: 'documento_emitido',
+            referencia_id: insertedId,
+            lida: 0,
+            criado_em: dataEmissao
+          });
+        } catch {
+          await dbHelper.query('notificacoes_usuarios', 'insert', {
+            usuario_id: targetUserId,
+            mensagem: notifMsg,
+            tipo: 'documento_emitido',
+            referencia_id: insertedId,
+            lida: 0,
+            criado_em: dataEmissao
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error('Erro ao enviar notificação para o paciente:', notifErr.message);
+    }
+
     return res.status(201).json({
       id: insertedId,
       docUuid,

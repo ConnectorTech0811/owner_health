@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, CreditCard, Plus, X, User, Mail, Lock, Phone, Save, Eye as EyeIcon } from 'lucide-react';
+import { Building2, CreditCard, Plus, X, User, Mail, Lock, Phone, Save, Eye as EyeIcon, Search } from 'lucide-react';
 import { API_URL } from '../../config';
-import { formatCNPJ, isValidCNPJ } from '../../utils/validators';
+import { formatCNPJ, isValidCNPJ, isValidCPF, formatCPF } from '../../utils/validators';
 
 export const CompanyList: React.FC = () => {
   const [companies, setCompanies] = useState<any[]>([]);
@@ -11,6 +11,8 @@ export const CompanyList: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
   const [viewingCompany, setViewingCompany] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [licenseFilter, setLicenseFilter] = useState<'todos' | 'pago' | 'pendente'>('todos');
 
   const token = localStorage.getItem('token');
 
@@ -140,6 +142,36 @@ export const CompanyList: React.FC = () => {
         </button>
       </div>
 
+      {/* Barra de Busca e Filtros Avançados */}
+      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+          {/* Busca por Razão Social, Nome Fantasia, CNPJ, Responsável, E-mail, Celular */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Buscar por Razão Social, Nome Fantasia, CNPJ, Responsável, E-mail ou Celular..."
+              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-xs font-medium focus:outline-none focus:border-primary-500 transition shadow-2xs"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Filtro por Licença / Pagamento */}
+          <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 text-xs">
+            <span className="px-2 font-bold text-slate-400 text-[10px] uppercase">Status Licença:</span>
+            <button onClick={() => setLicenseFilter('todos')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${licenseFilter === 'todos' ? 'bg-primary-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Todos</button>
+            <button onClick={() => setLicenseFilter('pago')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${licenseFilter === 'pago' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Pagos</button>
+            <button onClick={() => setLicenseFilter('pendente')} className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${licenseFilter === 'pendente' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Pendentes</button>
+          </div>
+        </div>
+      </div>
+
       {companies.length === 0 ? (
         <div className="text-center py-10 border border-dashed border-slate-100 rounded-2xl">
           <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
@@ -158,7 +190,30 @@ export const CompanyList: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold">
-              {companies.map(company => (
+              {companies
+                .filter(company => {
+                  if (licenseFilter === 'pago' && !company.pago) return false;
+                  if (licenseFilter === 'pendente' && company.pago) return false;
+
+                  if (searchTerm.trim()) {
+                    const term = searchTerm.toLowerCase().trim();
+                    const cleanTerm = term.replace(/\D/g, '');
+
+                    const matchRazao = (company.razao_social || '').toLowerCase().includes(term);
+                    const matchFantasia = (company.nome_fantasia || '').toLowerCase().includes(term);
+                    const matchCnpj = cleanTerm ? (company.cnpj || '').replace(/\D/g, '').includes(cleanTerm) : (company.cnpj || '').toLowerCase().includes(term);
+                    const matchResp = (company.nome_responsavel || '').toLowerCase().includes(term);
+                    const matchEmail = (company.email || '').toLowerCase().includes(term);
+                    const matchPhone = cleanTerm ? (company.celular || '').replace(/\D/g, '').includes(cleanTerm) : (company.celular || '').toLowerCase().includes(term);
+
+                    if (!matchRazao && !matchFantasia && !matchCnpj && !matchResp && !matchEmail && !matchPhone) {
+                      return false;
+                    }
+                  }
+
+                  return true;
+                })
+                .map(company => (
                 <tr key={company.id} className="hover:bg-slate-50/50">
                   <td className="p-4">
                     <p className="font-bold text-slate-800">{company.razao_social}</p>
@@ -370,9 +425,20 @@ export const CompanyList: React.FC = () => {
                   <input
                     type="text" required placeholder="000.000.000-00"
                     value={form.cpf_responsavel}
-                    onChange={e => setForm({...form, cpf_responsavel: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-primary-400"
+                    onChange={e => setForm({...form, cpf_responsavel: formatCPF(e.target.value)})}
+                    className={`w-full border ${form.cpf_responsavel ? (isValidCPF(form.cpf_responsavel) ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : 'border-red-500 bg-red-50 text-red-900') : 'border-slate-200 bg-slate-50'} rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-primary-400 transition`}
                   />
+                  {form.cpf_responsavel && (
+                    <div className="mt-1 text-[10px] font-bold">
+                      {form.cpf_responsavel.replace(/\D/g, '').length < 11 ? (
+                        <span className="text-amber-600">⚠️ {form.cpf_responsavel.replace(/\D/g, '').length}/11 dígitos</span>
+                      ) : isValidCPF(form.cpf_responsavel) ? (
+                        <span className="text-emerald-600">✓ CPF Válido</span>
+                      ) : (
+                        <span className="text-red-600">✖ CPF Inválido</span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>

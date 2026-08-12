@@ -97,6 +97,7 @@ const memoryDb = {
       data_nascimento: '1980-10-10',
       endereco: 'Av. Paulista, 1000, Cj 52, São Paulo - SP',
       numero_conselho: 'CRM-SP 123456',
+      especialidade: 'Cardiologia',
       email: 'medico@ownerhealth.com.br',
       celular: '(11) 99999-8888'
     }

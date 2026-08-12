@@ -3,6 +3,13 @@ import { MapPin, Loader2, Check, Clock, User, Shield, ChevronRight, ChevronLeft,
 import { useSearchParams } from 'react-router-dom';
 import { API_URL } from '../../config';
 
+const ESPECIALIDADES = [
+  'Clínico Geral', 'Cardiologia', 'Dermatologia', 'Endocrinologia', 'Fisioterapia',
+  'Fonoaudiologia', 'Gastroenterologia', 'Geriatria', 'Ginecologia', 'Neurologia',
+  'Nutrição', 'Oftalmologia', 'Oncologia', 'Ortopedia', 'Pediatria', 'Psicologia',
+  'Psiquiatria', 'Reumatologia', 'Terapia Ocupacional', 'Urologia',
+];
+
 interface Professional {
   id: number; nome: string; especialidade: string; conselho: string;
   clinica: string; planos: string[]; cep: string; cidade: string;
@@ -78,16 +85,26 @@ export const ClientScheduling: React.FC = () => {
       });
       const data = await res.json();
       
-      const formatted = Array.isArray(data) ? data.filter((p: any) => p.tipo_profissional === 'medico').map((p: any) => ({
+      const formatted = Array.isArray(data) ? data.filter((p: any) => p.tipo_profissional === 'medico' && p.ativo !== 0 && p.ativo !== false).map((p: any) => ({
         id: p.id,
         nome: p.nome,
         especialidade: p.especialidade || 'Clínico Geral',
         conselho: p.numero_conselho || 'Sem conselho',
         clinica: 'Clínica Principal',
         planos: ['Particular'],
-        cep: p.endereco?.match(/CEP: (\d{5}-\d{3})/) ? p.endereco.match(/CEP: (\d{5}-\d{3})/)[1] : '00000-000',
-        cidade: p.endereco ? p.endereco.split(' - ')[0].split(', ').pop() : 'Desconhecida',
-        estado: 'SP',
+        cep: (() => {
+          if (p.cep) {
+            return p.cep.includes('-') ? p.cep : p.cep.replace(/(\d{5})(\d{3})/, '$1-$2');
+          }
+          const match = p.endereco?.match(/CEP:\s*(\d{5}-?\d{3})/i);
+          if (match) {
+            const val = match[1];
+            return val.includes('-') ? val : val.replace(/(\d{5})(\d{3})/, '$1-$2');
+          }
+          return '00000-000';
+        })(),
+        cidade: p.cidade || (p.endereco ? p.endereco.split(' - ')[0].split(', ').pop() : 'Desconhecida'),
+        estado: p.estado || 'SP',
         preco: p.valor_consulta ? parseFloat(p.valor_consulta) : 150,
         celular: p.celular || ''
       })) : [];
@@ -285,11 +302,9 @@ export const ClientScheduling: React.FC = () => {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:outline-none focus:border-blue-500 transition"
                 >
                   <option value="">Todas as especialidades</option>
-                  <option value="Cardiologia">Cardiologia</option>
-                  <option value="Clínico Geral">Clínico Geral</option>
-                  <option value="Endocrinologia">Endocrinologia</option>
-                  <option value="Pediatria">Pediatria</option>
-                  <option value="Dermatologia">Dermatologia</option>
+                  {ESPECIALIDADES.map(spec => (
+                    <option key={spec} value={spec}>{spec}</option>
+                  ))}
                 </select>
               </div>
 

@@ -14,6 +14,7 @@ const {
   getSharedPatientData,
   createCompanyDocument,
   getCompanyDocuments,
+  deleteCompanyDocument,
   getPublicCompanies
 } = require('../controllers/companyController');
 const { authenticateToken } = require('../middleware/auth');
@@ -43,5 +44,6 @@ router.get('/:id/patient-data/:cpfOrCode', authenticateToken, getSharedPatientDa
 // Documentos (Receitas e Atestados)
 router.get('/:id/documents', authenticateToken, getCompanyDocuments);
 router.post('/:id/documents', authenticateToken, createCompanyDocument);
+router.delete('/:id/documents/:docId', authenticateToken, deleteCompanyDocument);
 
 module.exports = router;

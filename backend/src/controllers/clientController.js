@@ -6,24 +6,30 @@ const getClients = async (req, res) => {
   try {
     const db = require('../../knexfile');
     const isEmpresa = req.user && (req.user.eh_empresa || req.user.empresa_id);
-    const { medico_id, incluir_inativos } = req.query;
+    const { medico_id, incluir_inativos, somente_ativos } = req.query;
     
     let baseClients = [];
-    if (isEmpresa) {
-      const empresaId = req.user.empresa_id || req.user.id;
-      const relations = await db('cliente_empresas').where({ empresa_id: empresaId }).select();
-      if (relations && relations.length > 0) {
-        const clientIds = relations.map(r => r.cliente_id);
-        baseClients = await db('clientes').whereIn('id', clientIds);
+    try {
+      if (isEmpresa) {
+        const empresaId = req.user.empresa_id || req.user.id;
+        const relations = await db('cliente_empresas').where({ empresa_id: empresaId }).select();
+        if (relations && relations.length > 0) {
+          const clientIds = relations.map(r => r.cliente_id);
+          baseClients = await db('clientes').whereIn('id', clientIds);
+        } else {
+          baseClients = await db('clientes').select('*');
+        }
       } else {
         baseClients = await db('clientes').select('*');
       }
-    } else {
-      baseClients = await db('clientes').select('*');
+    } catch (dbErr) {
+      baseClients = await dbHelper.query('clientes', 'select');
     }
 
-    // Filtrar pacientes inativos apenas quando NÃO for clínica/empresa e NÃO for solicitado incluir_inativos
-    if (String(incluir_inativos) !== 'true' && !isEmpresa) {
+    const isAdmin = req.user && (req.user.eh_admin || req.user.role === 'admin' || req.user.tipo === 'admin' || req.user.role === 'superadmin');
+    
+    // Somente filtrar pacientes inativos se for explicitamente solicitado via somente_ativos=true e NÃO for Admin ou Clínica
+    if (String(somente_ativos) === 'true' && !isEmpresa && !isAdmin) {
       baseClients = baseClients.filter(c => c.status !== 'inativo');
     }
 
@@ -31,9 +37,12 @@ const getClients = async (req, res) => {
     let doctorIdToFilter = null;
     if (medico_id) {
       const docInput = parseInt(medico_id);
-      let doc = await db('profissionais').where({ id: docInput }).first();
-      if (!doc) {
-        doc = await db('profissionais').where({ usuario_id: docInput }).first();
+      let doc = null;
+      try {
+        doc = await db('profissionais').where({ id: docInput }).first() || await db('profissionais').where({ usuario_id: docInput }).first();
+      } catch (e) {
+        const profs = await dbHelper.query('profissionais', 'select');
+        doc = profs.find(p => p.id === docInput || p.usuario_id === docInput);
       }
       if (doc) doctorIdToFilter = doc.id;
     }
@@ -41,14 +50,13 @@ const getClients = async (req, res) => {
     // Se o usuário logado for um profissional médico
     if (!doctorIdToFilter && req.user) {
       let doc = null;
-      if (req.user.id) {
-        doc = await db('profissionais').where({ usuario_id: req.user.id }).first();
-      }
-      if (!doc && req.user.email) {
-        doc = await db('profissionais').where({ email: req.user.email }).first();
-      }
-      if (!doc && req.user.profissional_id) {
-        doc = await db('profissionais').where({ id: req.user.profissional_id }).first();
+      try {
+        if (req.user.id) doc = await db('profissionais').where({ usuario_id: req.user.id }).first();
+        if (!doc && req.user.email) doc = await db('profissionais').where({ email: req.user.email }).first();
+        if (!doc && req.user.profissional_id) doc = await db('profissionais').where({ id: req.user.profissional_id }).first();
+      } catch (errDoc) {
+        const profs = await dbHelper.query('profissionais', 'select');
+        doc = profs.find(p => p.usuario_id === req.user.id || p.email === req.user.email || p.id === req.user.profissional_id);
       }
 
       if (doc && (doc.tipo_profissional === 'medico' || doc.tipo_profissional === 'médico' || req.user.tipo_profissional === 'medico')) {
@@ -58,16 +66,15 @@ const getClients = async (req, res) => {
 
     if (doctorIdToFilter) {
       const allowedIds = new Set();
-
-      const hasAccessTable = await db.schema.hasTable('paciente_medico_acessos');
-      if (hasAccessTable) {
-        const acessos = await db('paciente_medico_acessos').where({ medico_id: doctorIdToFilter }).select('cliente_id');
-        acessos.forEach(a => allowedIds.add(a.cliente_id));
-      }
+      try {
+        const hasAccessTable = await db.schema.hasTable('paciente_medico_acessos');
+        if (hasAccessTable) {
+          const acessos = await db('paciente_medico_acessos').where({ medico_id: doctorIdToFilter }).select('cliente_id');
+          acessos.forEach(a => allowedIds.add(a.cliente_id));
+        }
+      } catch (errAcc) {}
 
       baseClients = baseClients.filter(c => allowedIds.has(c.id));
-    } else if (String(incluir_inativos) !== 'true' && !isEmpresa) {
-      baseClients = baseClients.filter(c => c.status !== 'inativo');
     }
 
     return res.json(baseClients);

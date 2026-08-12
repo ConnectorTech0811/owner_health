@@ -34,7 +34,7 @@ export const UserList: React.FC = () => {
           estado: data.uf || prev.estado
         }));
       }
-    } catch {}
+    } catch { }
     finally { setCepLoading(false); }
   };
 
@@ -116,7 +116,7 @@ export const UserList: React.FC = () => {
     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-black text-slate-800">Usuários Administrativos</h2>
+          <h2 className="text-xl font-black text-slate-800">Administradores Master</h2>
           <p className="text-xs text-slate-500 font-medium">Controle de colaboradores e administradores com acesso ao painel Master</p>
         </div>
         <button
@@ -124,7 +124,7 @@ export const UserList: React.FC = () => {
           className="flex items-center gap-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold transition-colors"
         >
           <Plus className="w-4 h-4" />
-          <span>Novo Usuário</span>
+          <span>Novo Admin Master</span>
         </button>
       </div>
 
@@ -182,7 +182,7 @@ export const UserList: React.FC = () => {
 
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                
+
                 <div className="col-span-2">
                   <label className="block text-xs font-bold text-slate-600 mb-1">Nome Completo</label>
                   <div className="relative">
@@ -192,7 +192,7 @@ export const UserList: React.FC = () => {
                     <input
                       type="text" required
                       value={form.nome}
-                      onChange={e => setForm({...form, nome: e.target.value})}
+                      onChange={e => setForm({ ...form, nome: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
                     />
                   </div>
@@ -203,7 +203,7 @@ export const UserList: React.FC = () => {
                   <input
                     type="text" required placeholder="000.000.000-00"
                     value={form.cpf}
-                    onChange={e => setForm({...form, cpf: e.target.value})}
+                    onChange={e => setForm({ ...form, cpf: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none"
                   />
                 </div>
@@ -219,7 +219,7 @@ export const UserList: React.FC = () => {
                       min="1940-01-01"
                       max={new Date().toISOString().split('T')[0]}
                       value={form.data_nascimento}
-                      onChange={e => setForm({...form, data_nascimento: e.target.value})}
+                      onChange={e => setForm({ ...form, data_nascimento: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
                     />
                   </div>
@@ -234,7 +234,7 @@ export const UserList: React.FC = () => {
                     <input
                       type="text" required placeholder="(00) 00000-0000"
                       value={form.celular}
-                      onChange={e => setForm({...form, celular: e.target.value})}
+                      onChange={e => setForm({ ...form, celular: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
                     />
                   </div>
@@ -251,7 +251,7 @@ export const UserList: React.FC = () => {
                     </span>
                     <input type="text" required placeholder="00000-000"
                       value={form.cep}
-                      onChange={e => setForm({...form, cep: e.target.value.replace(/\D/g,'').replace(/(\d{5})(\d)/,'$1-$2').slice(0,9)})}
+                      onChange={e => setForm({ ...form, cep: e.target.value.replace(/\D/g, '').replace(/(\d{5})(\d)/, '$1-$2').slice(0, 9) })}
                       onBlur={handleCepBlur} maxLength={9}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
                     />
@@ -265,7 +265,7 @@ export const UserList: React.FC = () => {
                     </span>
                     <input type="text" required placeholder="Ex: 123"
                       value={form.numero}
-                      onChange={e => setForm({...form, numero: e.target.value})}
+                      onChange={e => setForm({ ...form, numero: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
                     />
                   </div>
@@ -278,7 +278,7 @@ export const UserList: React.FC = () => {
                     </span>
                     <input type="text" required placeholder="Rua, Avenida..."
                       value={form.logradouro}
-                      onChange={e => setForm({...form, logradouro: e.target.value})}
+                      onChange={e => setForm({ ...form, logradouro: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
                     />
                   </div>
@@ -287,7 +287,7 @@ export const UserList: React.FC = () => {
                   <label className="block text-xs font-bold text-slate-600 mb-1">Estado (UF)</label>
                   <input type="text" required placeholder="Ex: SP"
                     value={form.estado}
-                    onChange={e => setForm({...form, estado: e.target.value.toUpperCase().slice(0,2)})}
+                    onChange={e => setForm({ ...form, estado: e.target.value.toUpperCase().slice(0, 2) })}
                     maxLength={2}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none"
                   />
@@ -296,7 +296,7 @@ export const UserList: React.FC = () => {
                   <label className="block text-xs font-bold text-slate-600 mb-1">Complemento <span className="text-slate-400 font-normal">(opcional)</span></label>
                   <input type="text" placeholder="Apto, Sala..."
                     value={form.complemento}
-                    onChange={e => setForm({...form, complemento: e.target.value})}
+                    onChange={e => setForm({ ...form, complemento: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none"
                   />
                 </div>
@@ -314,7 +314,7 @@ export const UserList: React.FC = () => {
                     <input
                       type="email" required placeholder="admin@empresa.com"
                       value={form.email}
-                      onChange={e => setForm({...form, email: e.target.value})}
+                      onChange={e => setForm({ ...form, email: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
                     />
                   </div>
@@ -329,7 +329,7 @@ export const UserList: React.FC = () => {
                     <input
                       type="password" required placeholder="senha"
                       value={form.senha}
-                      onChange={e => setForm({...form, senha: e.target.value})}
+                      onChange={e => setForm({ ...form, senha: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:outline-none"
                     />
                   </div>

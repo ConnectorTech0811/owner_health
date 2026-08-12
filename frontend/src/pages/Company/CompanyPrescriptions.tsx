@@ -15,6 +15,17 @@ interface PrescriptionItem {
   registro_ms?: string;
 }
 
+const formatDate = (dateVal?: string) => {
+  if (!dateVal) return '';
+  const cleanStr = String(dateVal).split('T')[0];
+  const parts = cleanStr.split('-');
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+  }
+  return new Date(dateVal).toLocaleDateString('pt-BR');
+};
+
 export const CompanyPrescriptions: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'emitir' | 'modelos' | 'historico' | 'bulario'>('emitir');
   const [professionals, setProfessionals] = useState<any[]>([]);
@@ -49,7 +60,7 @@ export const CompanyPrescriptions: React.FC = () => {
     exibir_cid_atestado: true,
     dias_atestado: '3',
     justificativa_exames: '',
-    observacoes: 'Manter medicamentos em local fresco e seco. Em caso de reações adversas, contatar o médico imediato.',
+    observacoes: '',
     assinado_digitalmente: true
   });
 
@@ -174,6 +185,31 @@ export const CompanyPrescriptions: React.FC = () => {
       }
     } catch (err) { console.error(err); }
     finally { setLoadingHistory(false); }
+  };
+
+  const handleDeleteDocument = async (doc: any) => {
+    const confirmMessage = 
+      `⚠️ ATENÇÃO: EXCLUSÃO PERMANENTE DE DOCUMENTO MÉDICO\n\n` +
+      `Ao excluir este ${doc.tipo === 'atestado' ? 'atestado' : 'receituário'}, ele será removido permanentemente do seu histórico médico e TAMBÉM da conta do paciente vinculado (${doc.paciente_nome || doc.paciente_cpf || 'Paciente'}).\n\n` +
+      `Esta ação não poderá ser desfeita. Deseja realmente prosseguir com a exclusão?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/companies/${companyId}/documents/${doc.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        alert('Documento excluído com sucesso.');
+        fetchHistoryDocs();
+      } else {
+        alert('Erro ao excluir documento.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro de conexão ao excluir documento.');
+    }
   };
 
   // Busca ANVISA com debounce (Emissor)
@@ -1329,7 +1365,7 @@ export const CompanyPrescriptions: React.FC = () => {
                             )}
 
                             <div className="flex items-center gap-4 text-[10px] text-slate-400 font-semibold pt-0.5">
-                              <span>Emitido em: {new Date(doc.criado_em || Date.now()).toLocaleDateString('pt-BR')}</span>
+                              <span>Emitido em: {formatDate(doc.data || doc.criado_em)}</span>
                               <span>•</span>
                               <span>Médico: {doc.medico_nome || 'Médico Credenciado'}</span>
                             </div>
@@ -1352,6 +1388,13 @@ export const CompanyPrescriptions: React.FC = () => {
                             className="px-3.5 py-2 bg-indigo-50 border border-indigo-100 hover:bg-indigo-600 hover:text-white rounded-xl text-xs font-bold text-indigo-700 transition cursor-pointer flex items-center gap-1.5"
                           >
                             <Printer className="w-3.5 h-3.5" /> Reimprimir
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDocument(doc)}
+                            className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                            title="Excluir documento do seu histórico e do paciente"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Excluir
                           </button>
                         </div>
                       </div>
@@ -1527,7 +1570,7 @@ export const CompanyPrescriptions: React.FC = () => {
                   <p className="font-black text-slate-800">Paciente: {viewingDocModal.paciente_nome || viewingDocModal.paciente_cpf}</p>
                   <p className="text-slate-500 font-medium">CPF: {viewingDocModal.paciente_cpf || 'Não Informado'}</p>
                   <p className="text-slate-500 font-medium">Médico: {viewingDocModal.medico_nome} ({viewingDocModal.medico_crm})</p>
-                  <p className="text-slate-500 font-medium">Data: {new Date(viewingDocModal.criado_em || Date.now()).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-slate-500 font-medium">Data: {formatDate(viewingDocModal.data || viewingDocModal.criado_em)}</p>
                 </div>
 
                 <div className="space-y-2">

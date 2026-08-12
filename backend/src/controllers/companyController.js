@@ -421,8 +421,27 @@ const getCompanyDocuments = async (req, res) => {
     const profs = profIds.length > 0 ? await db('profissionais').whereIn('id', profIds).select('id', 'nome', 'numero_conselho') : [];
     const profMap = new Map(profs.map(p => [p.id, p]));
 
+    // Resolvendo os nomes dos pacientes baseados no paciente_cpf
+    const cleanCpf = (cpf) => cpf ? String(cpf).replace(/\D/g, '') : '';
+    const cpfs = Array.from(new Set(docs.map(d => cleanCpf(d.paciente_cpf)).filter(Boolean)));
+    
+    let clients = [];
+    try {
+      clients = cpfs.length > 0 ? await db('clientes').whereIn('cpf', cpfs).select('id', 'nome', 'cpf') : [];
+    } catch {
+      // Fallback em memória
+      const dbHelper = require('../utils/dbHelper');
+      clients = cpfs.length > 0 ? await dbHelper.query('clientes', 'select') : [];
+    }
+
+    const clientMap = new Map();
+    clients.forEach(c => {
+      clientMap.set(cleanCpf(c.cpf), c);
+    });
+
     const result = docs.map(d => ({
       ...d,
+      paciente_nome: clientMap.get(cleanCpf(d.paciente_cpf))?.nome || 'Paciente não cadastrado',
       medico_nome: profMap.get(d.profissional_id)?.nome || 'Médico Credenciado',
       medico_crm: profMap.get(d.profissional_id)?.numero_conselho || 'CRM/UF'
     }));
@@ -431,6 +450,61 @@ const getCompanyDocuments = async (req, res) => {
   } catch (err) {
     console.error('Erro em getCompanyDocuments:', err);
     return res.status(500).json({ error: 'Erro ao obter histórico de documentos' });
+  }
+};
+
+const deleteCompanyDocument = async (req, res) => {
+  const { id, docId } = req.params;
+  try {
+    const db = require('../../knexfile');
+    const dbHelper = require('../utils/dbHelper');
+
+    let doc = null;
+    try {
+      doc = await db('empresa_documentos_emitidos')
+        .where({ id: parseInt(docId), empresa_id: parseInt(id) })
+        .first();
+    } catch {
+      const list = await dbHelper.query('empresa_documentos_emitidos', 'select', { id: parseInt(docId) });
+      if (list.length > 0) doc = list[0];
+    }
+
+    if (!doc) {
+      return res.status(404).json({ error: 'Documento não encontrado' });
+    }
+
+    // 1. Remover do histórico da empresa
+    try {
+      await db('empresa_documentos_emitidos').where({ id: parseInt(docId) }).delete();
+    } catch {
+      await dbHelper.query('empresa_documentos_emitidos', 'delete', { id: parseInt(docId) });
+    }
+
+    // 2. Remover da tabela receitas (para sumir da visão do paciente)
+    const cleanCpf = doc.paciente_cpf ? String(doc.paciente_cpf).replace(/\D/g, '') : '';
+    try {
+      if (cleanCpf) {
+        let query = db('receitas').where({ paciente_cpf: cleanCpf });
+        if (doc.hash_sha256) {
+          query = db('receitas').where({ hash_sha256: doc.hash_sha256 });
+        }
+        await query.delete();
+      }
+    } catch {
+      if (cleanCpf) {
+        const matchingReceitas = await dbHelper.query('receitas', 'select');
+        for (const r of matchingReceitas) {
+          if (r.paciente_cpf && String(r.paciente_cpf).replace(/\D/g, '') === cleanCpf) {
+            await dbHelper.query('receitas', 'delete', { id: r.id });
+          }
+        }
+      }
+    }
+
+    return res.json({ message: 'Documento excluído com sucesso do histórico e do aplicativo do paciente' });
+  } catch (err) {
+    console.error('Erro em deleteCompanyDocument:', err);
+    return res.status(500).json({ error: 'Erro ao excluir documento' });
   }
 };
 
@@ -448,5 +522,6 @@ module.exports = {
   updateAnamnesisConfig,
   getSharedPatientData,
   createCompanyDocument,
-  getCompanyDocuments
+  getCompanyDocuments,
+  deleteCompanyDocument
 };

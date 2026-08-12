@@ -57,31 +57,42 @@ export function AgendaCalendar({
 
   const currentMonthBlocked = isMonthBlocked(month + 1, year);
 
+  const formatDateStr = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   // Navegação do Calendário
   const handlePrev = () => {
+    let nextDate: Date;
     if (viewMode === 'mes') {
-      setCurrentDate(new Date(year, month - 1, 1));
+      nextDate = new Date(year, month - 1, 1);
     } else {
-      const d = new Date(currentDate);
-      d.setDate(d.getDate() - 7);
-      setCurrentDate(d);
+      nextDate = new Date(currentDate);
+      nextDate.setDate(nextDate.getDate() - 7);
     }
+    setCurrentDate(nextDate);
+    setSelectedDate(formatDateStr(nextDate));
   };
 
   const handleNext = () => {
+    let nextDate: Date;
     if (viewMode === 'mes') {
-      setCurrentDate(new Date(year, month + 1, 1));
+      nextDate = new Date(year, month + 1, 1);
     } else {
-      const d = new Date(currentDate);
-      d.setDate(d.getDate() + 7);
-      setCurrentDate(d);
+      nextDate = new Date(currentDate);
+      nextDate.setDate(nextDate.getDate() + 7);
     }
+    setCurrentDate(nextDate);
+    setSelectedDate(formatDateStr(nextDate));
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    setSelectedDate(todayStr);
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(formatDateStr(today));
   };
 
   // Cálculo dos dias da semana (Domingo a Sábado)
@@ -178,7 +189,10 @@ export function AgendaCalendar({
           {/* SELETOR DE VISUALIZAÇÃO: SEMANA / MÊS */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
-              onClick={() => setViewMode('semana')}
+              onClick={() => {
+                setViewMode('semana');
+                setSelectedDate(formatDateStr(currentDate));
+              }}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 viewMode === 'semana'
                   ? 'bg-white text-indigo-600 shadow-sm'
@@ -188,7 +202,11 @@ export function AgendaCalendar({
               Semana
             </button>
             <button
-              onClick={() => setViewMode('mes')}
+              onClick={() => {
+                setViewMode('mes');
+                const firstOfMonth = new Date(year, month, 1);
+                setSelectedDate(formatDateStr(firstOfMonth));
+              }}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 viewMode === 'mes'
                   ? 'bg-white text-indigo-600 shadow-sm'
