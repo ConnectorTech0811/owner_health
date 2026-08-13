@@ -130,25 +130,32 @@ export const ClientPrivacy: React.FC = () => {
     }
   };
 
-  const loadShareRules = () => {
-    // Carregar exames mockados compartilhados do localStorage
-    // Para fins demonstrativos, geramos 2 regras se não houver no cache
+  const loadShareRules = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/exams/shared-list`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map((d: any) => ({
+            id: d.token || d.id,
+            token: d.token,
+            examId: d.exame_id,
+            examTipo: d.exame?.tipo || 'Exame',
+            profNome: d.medico_nome || 'Profissional',
+            duration: d.duracao === '24h' ? '24 Horas' : d.duracao === '48h' ? '48 Horas' : d.duracao === '7d' ? '7 Dias' : 'Permanente',
+            criadoEm: d.criado_em ? new Date(d.criado_em).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR'),
+            visualizado: d.visualizado === 1,
+            visualizadoEm: d.visualizado_em
+          }));
+          setShareRules(mapped);
+          return;
+        }
+      }
+    } catch {}
+
     const cached = localStorage.getItem(`shares_${activeProfileId}`);
     if (cached) {
       setShareRules(JSON.parse(cached));
-    } else {
-      const initialRules: ShareRule[] = [
-        {
-          id: 'rule-1',
-          examId: 1,
-          examTipo: 'Glicemia em Jejum',
-          profNome: 'Dr. Roberto Santos',
-          duration: '48 Horas',
-          criadoEm: new Date().toLocaleDateString('pt-BR')
-        }
-      ];
-      setShareRules(initialRules);
-      localStorage.setItem(`shares_${activeProfileId}`, JSON.stringify(initialRules));
     }
   };
 
@@ -396,6 +403,15 @@ export const ClientPrivacy: React.FC = () => {
 
                     <div className="flex items-center justify-between border-t border-slate-200/50 pt-2.5 text-[9px] text-slate-400 font-bold uppercase">
                       <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-slate-400" /> Ativo em: {rule.criadoEm}</span>
+                      {(rule as any).visualizado ? (
+                        <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                          🟢 Visualizado pelo Médico
+                        </span>
+                      ) : (
+                        <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                          🔴 Não Visualizado
+                        </span>
+                      )}
                       <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-black shrink-0">Validade: {rule.duration}</span>
                     </div>
                   </div>

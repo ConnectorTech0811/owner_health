@@ -22,7 +22,7 @@ const createTransporter = () =>
  * @param {string} opts.perfil     - Ex: 'Cliente', 'Profissional de Saúde'
  */
 const sendFirstAccessEmail = async ({ to, nome, email, senha, perfil = 'Usuário' }) => {
-  const sysUrl = process.env.SYSTEM_URL || 'http://localhost:5173';
+  const sysUrl = process.env.SYSTEM_URL || process.env.FRONTEND_URL || 'https://owner-health-ktsf.vercel.app';
   const transporter = createTransporter();
 
   const mailOptions = {

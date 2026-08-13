@@ -64,6 +64,13 @@ export const CompanyPrescriptions: React.FC = () => {
     assinado_digitalmente: true
   });
 
+  const [observacoesByTipo, setObservacoesByTipo] = useState<Record<string, string>>({
+    receita_simples: '',
+    receita_controle_especial: '',
+    atestado: '',
+    exames: ''
+  });
+
   // Itens da Prescrição
   const [itemsList, setItemsList] = useState<PrescriptionItem[]>([
     { medicamento: '', posologia: '', via: 'Oral', instrucoes: '' }
@@ -412,6 +419,24 @@ export const CompanyPrescriptions: React.FC = () => {
       setSuccessMsg(' Documento assinado criptograficamente (ICP-Brasil SHA-256) e emitido com sucesso!');
       setIssuedDoc(data);
       fetchHistoryDocs();
+
+      // Limpar campos de observação, CID e medicamentos para o próximo documento ficar limpo
+      setDocForm(prev => ({
+        ...prev,
+        observacoes: '',
+        cid10_codigo: '',
+        cid10_descricao: '',
+        justificativa_exames: ''
+      }));
+      setObservacoesByTipo({
+        receita_simples: '',
+        receita_controle_especial: '',
+        atestado: '',
+        exames: ''
+      });
+      setItemsList([
+        { medicamento: '', posologia: '', via: 'Oral', instrucoes: '' }
+      ]);
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao processar emissão.');
     } finally {
@@ -682,7 +707,11 @@ export const CompanyPrescriptions: React.FC = () => {
                         <button
                           key={t.id}
                           type="button"
-                          onClick={() => setDocForm({...docForm, tipo: t.id, vias: t.vias})}
+                          onClick={() => {
+                            const newTipo = t.id;
+                            const currentDocObs = observacoesByTipo[newTipo] || '';
+                            setDocForm(prev => ({ ...prev, tipo: newTipo, vias: t.vias, observacoes: currentDocObs }));
+                          }}
                           className={`p-3 rounded-2xl border text-left text-xs font-bold transition-all cursor-pointer flex flex-col justify-between ${
                             docForm.tipo === t.id
                               ? 'border-indigo-600 bg-indigo-600 text-white shadow-md'
@@ -937,7 +966,11 @@ export const CompanyPrescriptions: React.FC = () => {
                     <textarea
                       rows={2}
                       value={docForm.observacoes}
-                      onChange={e => setDocForm({...docForm, observacoes: e.target.value})}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setDocForm(prev => ({ ...prev, observacoes: val }));
+                        setObservacoesByTipo(prev => ({ ...prev, [docForm.tipo]: val }));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:outline-none focus:border-indigo-500"
                     />
                   </div>

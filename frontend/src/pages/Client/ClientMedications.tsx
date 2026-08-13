@@ -14,7 +14,7 @@ interface PriceSimulation {
   farmacia: string;
   preco: number;
   desconto: string;
-  cupom: string;
+  cupom?: string;
   distancia: string;
   link: string;
 }
@@ -287,8 +287,7 @@ export const ClientMedications: React.FC = () => {
         {
           farmacia: 'Drogasil',
           preco: basePrice,
-          desconto: '25% de desconto com cupom OwnerHealth',
-          cupom: 'OWNER25',
+          desconto: 'Menor preço encontrado no catálogo',
           distancia: '0.8 km de você',
           link: 'https://www.drogasil.com.br'
         },
@@ -296,23 +295,20 @@ export const ClientMedications: React.FC = () => {
           farmacia: 'Drogaria São Paulo',
           preco: basePrice - 2.5 > 10 ? basePrice - 2.5 : basePrice,
           desconto: 'Melhor preço à vista no convênio',
-          cupom: 'DSPCONV',
           distancia: '1.2 km de você',
           link: 'https://www.drogariasaopaulo.com.br'
         },
         {
           farmacia: 'Pague Menos',
           preco: basePrice + 3.1,
-          desconto: 'Ganhe 15% na segunda unidade',
-          cupom: 'PAGUEM15',
+          desconto: 'Disponível para entrega rápida',
           distancia: '2.5 km de você',
           link: 'https://www.paguemenos.com.br'
         },
         {
           farmacia: 'Ultrafarma',
           preco: basePrice - 4 > 8 ? basePrice - 4 : basePrice,
-          desconto: 'Desconto exclusivo online',
-          cupom: 'ULTRAOWNER',
+          desconto: 'Preço promocional online',
           distancia: 'Entrega rápida por CEP',
           link: 'https://www.ultrafarma.com.br'
         }
@@ -520,7 +516,7 @@ export const ClientMedications: React.FC = () => {
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h3 className="font-black text-slate-800 mb-2">API de Preços de Medicamentos</h3>
-            <p className="text-xs text-slate-500 mb-5">Pesquise por substâncias ou marcas comerciais para comparar preços nas redes de farmácias com cupom Owner Health.</p>
+            <p className="text-xs text-slate-500 mb-5">Pesquise por substâncias ou marcas comerciais para comparar preços nas redes de farmácias em tempo real.</p>
             
             <form onSubmit={handleSearchPrices} className="grid grid-cols-1 md:grid-cols-12 gap-3">
               <div className="md:col-span-6 relative">
@@ -584,10 +580,14 @@ export const ClientMedications: React.FC = () => {
                         <MapPin className="w-3.5 h-3.5 text-slate-400" /> {price.distancia}
                       </div>
                       <button
-                        onClick={() => alert(`Cupom ${price.cupom} copiado! Você será redirecionado para o site parceiro.`)}
-                        className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 text-[10px] font-black rounded-lg transition"
+                        onClick={() => {
+                          if (price.link) {
+                            window.open(price.link, '_blank', 'noopener,noreferrer');
+                          }
+                        }}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1"
                       >
-                        Pegar Cupom ({price.cupom})
+                        Ir para a Farmácia ↗
                       </button>
                     </div>
                   </div>

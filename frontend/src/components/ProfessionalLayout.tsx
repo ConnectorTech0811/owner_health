@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Users, Calendar, ClipboardList,
   Stethoscope, LogOut, Menu, X, HeartPulse, FileText,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, Share2
 } from 'lucide-react';
 import { ProfileModal } from './ProfileModal';
 import { NotificationBell } from './NotificationBell';
@@ -47,6 +47,7 @@ export const ProfessionalLayout: React.FC<ProfessionalLayoutProps> = ({ children
         { label: 'Meus Pacientes', path: '/professional/patients', icon: Users },
         { label: 'Anamnese', path: '/professional/anamnesis', icon: ClipboardList },
         { label: 'Receitas & Atestados', path: '/professional/prescriptions', icon: FileText },
+        { label: 'Exames Compartilhados', path: '/exames-compartilhados', icon: Share2 },
         { label: 'Meu Plano', path: '/professional/my-plan', icon: HeartPulse },
       ];
     }

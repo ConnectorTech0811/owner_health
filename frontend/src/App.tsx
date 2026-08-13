@@ -63,6 +63,43 @@ import { CompanyAnamnesisConfig as ProfAnamnesis } from './pages/Company/Company
 import { ProfessionalMyPlan } from './pages/Professional/ProfessionalMyPlan';
 import { AuditLogs } from './pages/Admin/AuditLogs';
 import { AdminSettings } from './pages/Admin/AdminSettings';
+import { SharedExams } from './pages/SharedExams';
+
+const SystemSharedExams = () => {
+  const userRaw = localStorage.getItem('user');
+  const user = userRaw ? JSON.parse(userRaw) : {};
+  const activeRole = localStorage.getItem('activeRole') || user.tipo_usuario || user.roles?.[0] || 'client';
+
+  if (activeRole === 'professional' || user.eh_profissional || user.tipo_profissional) {
+    return (
+      <ProfessionalLayout>
+        <SharedExams />
+      </ProfessionalLayout>
+    );
+  }
+
+  if (activeRole === 'company' || user.eh_empresa) {
+    return (
+      <CompanyLayout>
+        <SharedExams />
+      </CompanyLayout>
+    );
+  }
+
+  if (activeRole === 'admin' || user.eh_admin) {
+    return (
+      <Layout>
+        <SharedExams />
+      </Layout>
+    );
+  }
+
+  return (
+    <ClientLayout>
+      <SharedExams />
+    </ClientLayout>
+  );
+};
 
 function App() {
   return (
@@ -77,6 +114,18 @@ function App() {
         <Route path="/register/client" element={<RegisterClient />} />
         <Route path="/register/company" element={<RegisterCompany />} />
         <Route path="/register/professional" element={<RegisterProfessional />} />
+
+        {/* Rota Protegida de Exames Compartilhados Integrada no Layout do Sistema */}
+        <Route path="/exames-compartilhados" element={
+          <PrivateRoute redirectTo="/login">
+            <SystemSharedExams />
+          </PrivateRoute>
+        } />
+        <Route path="/view/exam/*" element={
+          <PrivateRoute redirectTo="/login">
+            <SystemSharedExams />
+          </PrivateRoute>
+        } />
 
         {/* Portal de Clientes (Públicas e Protegidas) */}
         <Route path="/client/login" element={<ClientLogin />} />
@@ -95,6 +144,7 @@ function App() {
                 <Route path="/profile" element={<ClientProfile />} />
                 <Route path="/dependents" element={<ClientDependents />} />
                 <Route path="/exams" element={<ClientExams />} />
+                <Route path="/shared-exams" element={<SharedExams />} />
                 <Route path="/prescriptions" element={<ClientPrescriptions />} />
                 <Route path="/medications" element={<ClientMedications />} />
                 <Route path="/bioimpedance" element={<ClientBioimpedance />} />
@@ -123,6 +173,7 @@ function App() {
                 <Route path="/health-plans" element={<CompanyHealthPlans />} />
                 <Route path="/patient-data" element={<CompanyPatientData />} />
                 <Route path="/prescriptions" element={<CompanyPrescriptions />} />
+                <Route path="/shared-exams" element={<SharedExams />} />
                 <Route path="/anamnesis-config" element={<CompanyAnamnesisConfig />} />
                 <Route path="/plans" element={<CompanyPlans />} />
                 <Route path="*" element={<Navigate to="/company/dashboard" replace />} />
@@ -140,6 +191,7 @@ function App() {
                 <Route path="/scheduling" element={<ProfScheduling />} />
                 <Route path="/patients" element={<ProfPatients />} />
                 <Route path="/prescriptions" element={<ProfPrescriptions />} />
+                <Route path="/shared-exams" element={<SharedExams />} />
                 <Route path="/team" element={<ProfTeam />} />
                 <Route path="/health-plans" element={<ProfHealthPlans />} />
                 <Route path="/anamnesis" element={<ProfAnamnesis />} />

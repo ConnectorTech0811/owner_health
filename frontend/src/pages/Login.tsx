@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Lock, Mail, Eye, EyeOff, Loader2, Check, HeartPulse, User, Stethoscope, Building2, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import loginBg from '../assets/login_bg.png';
 import { API_URL } from '../config';
 
 export const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -56,6 +57,12 @@ export const Login = () => {
       }
       if (data.user.profissional_id) {
         localStorage.setItem('profissionalId', String(data.user.profissional_id));
+      }
+
+      const redirectPath = location.state?.from;
+      if (redirectPath) {
+        navigate(redirectPath);
+        return;
       }
 
       if (primaryRole === 'client' || primaryRole === 'dependent') {

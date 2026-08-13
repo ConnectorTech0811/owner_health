@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Building2, Users, Calendar, ClipboardList, Stethoscope, RefreshCw,
   LogOut, Menu, X, HeartPulse, Sparkles, ShieldAlert,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, Share2
 } from 'lucide-react';
 import { API_URL } from '../config';
 import { ProfileModal } from './ProfileModal';
@@ -113,6 +113,7 @@ export const CompanyLayout: React.FC<CompanyLayoutProps> = ({ children }) => {
       title: 'Atendimento',
       items: [
         { label: 'Pacientes / Clientes', path: '/company/patient-data', icon: Users },
+        { label: 'Exames Compartilhados', path: '/exames-compartilhados', icon: Share2 },
         ...(canSeePrescricoes ? [{ label: 'Receitas & Atestados', path: '/company/prescriptions', icon: ClipboardList }] : []),
         ...(canSeeAnamnesis ? [{ label: 'Configurar Anamnese', path: '/company/anamnesis-config', icon: ClipboardList }] : []),
       ],

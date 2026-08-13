@@ -311,7 +311,8 @@ const forgotPassword = async (req, res) => {
       }
     });
 
-    const resetLink = `http://localhost:5173/reset-password?token=${token}`;
+    const frontendBaseUrl = process.env.FRONTEND_URL || (req.headers && req.headers.origin && !req.headers.origin.includes('localhost') ? req.headers.origin : 'https://owner-health-ktsf.vercel.app');
+    const resetLink = `${frontendBaseUrl}/reset-password?token=${token}`;
 
     const mailOptions = {
       from: `Owner Health <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,

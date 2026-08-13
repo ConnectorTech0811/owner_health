@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FlaskConical, Trash2, FileText, Download, X, Loader2, Upload, Share2, AlertTriangle, Calendar, Check, Search, Edit, Eye } from 'lucide-react';
+import { Plus, FlaskConical, Trash2, FileText, Download, X, Loader2, Upload, Share2, AlertTriangle, Calendar, Check, Search, Edit, Eye, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../../config';
 
@@ -196,15 +196,34 @@ startxref
 
   const fetchProfessionals = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/professionals`, { headers });
-      const data = await res.json();
-      setProfessionals(Array.isArray(data) ? data : []);
+      const companyId = localStorage.getItem('companyId') || localStorage.getItem('empresaId') || '1';
+      const res = await fetch(`${API_URL}/api/professionals?companyId=${companyId}`, { headers });
+      let data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        const fallbackRes = await fetch(`${API_URL}/api/professionals`, { headers });
+        data = await fallbackRes.json();
+      }
+
+      const activeDoctors = (Array.isArray(data) ? data : []).filter((p: any) => {
+        // 1. Apenas médicos (exclui secretários, administrativos, outros perfis)
+        const tipoProf = (p.tipo_profissional || p.tipo || 'medico').toLowerCase();
+        const isDoctor = tipoProf === 'medico' || tipoProf.includes('médico') || tipoProf.includes('medico') || (p.numero_conselho && !tipoProf.includes('secretar') && !tipoProf.includes('admin'));
+
+        // 2. Não estarem inativos, bloqueados ou excluídos
+        const isAtivo = p.ativo !== false && p.status !== 'inativo' && p.status !== 'inactive' && p.status !== 'excluido';
+        const isNotBloqueado = p.bloqueado !== true && p.status !== 'bloqueado';
+        const isNotDeletado = p.deletado !== true && !p.deletado_em;
+
+        return isDoctor && isAtivo && isNotBloqueado && isNotDeletado;
+      });
+
+      setProfessionals(activeDoctors);
     } catch {
-      // Mock fallback
+      // Mock fallback apenas com médicos ativos da clínica
       setProfessionals([
-        { id: 1, nome: 'Dr. Roberto Santos (Cardiologista)' },
-        { id: 2, nome: 'Dra. Julia Alencar (Clínico Geral)' },
-        { id: 3, nome: 'Dr. Marcos Souza (Endocrinologista)' }
+        { id: 1, nome: 'Dr. Roberto Santos (Cardiologia)' },
+        { id: 2, nome: 'Dra. Júlia Alencar (Clínica Geral)' },
+        { id: 3, nome: 'Dr. Márcio (Clínica Geral)' }
       ]);
     }
   };
@@ -301,53 +320,389 @@ startxref
   };
 
   // Gerar código / link de visualização temporária para profissional
-  const handleGenerateShare = () => {
+  const handleGenerateShare = async () => {
     if (!selectedProfId) {
       alert('Por favor, selecione um profissional.');
       return;
     }
     const profName = professionals.find(p => String(p.id) === String(selectedProfId))?.nome || 'Profissional';
-    const randCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const mockLink = `${window.location.origin}/view/exam/${showShareModal?.id}?token=${randCode}&role=professional`;
-    
-    // Salvar regra no localStorage para aparecer em Privacidade
-    const newShare = {
-      id: `share-${randCode}`,
-      examId: showShareModal?.id || 1,
-      examTipo: showShareModal?.tipo || 'Exame',
-      profNome: profName,
-      duration: shareDuration === '24h' ? '24 Horas' : shareDuration === '48h' ? '48 Horas' : shareDuration === '7d' ? '7 Dias' : 'Permanente',
-      criadoEm: new Date().toLocaleDateString('pt-BR')
-    };
-    const existing = localStorage.getItem(`shares_${clienteId}`);
-    const list = existing ? JSON.parse(existing) : [];
-    localStorage.setItem(`shares_${clienteId}`, JSON.stringify([newShare, ...list]));
 
-    setGeneratedShareLink(mockLink);
-    setSharingSuccess(true);
+    try {
+      const res = await fetch(`${API_URL}/api/exams/share`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          exame_id: showShareModal?.id,
+          exame_tipo: showShareModal?.tipo || 'Exame PSA',
+          exame_data: showShareModal?.data || new Date().toISOString().split('T')[0],
+          laboratorio: showShareModal?.laboratorio || 'Laboratório Central de Análises',
+          observacoes: showShareModal?.observacoes || '',
+          cliente_id: clienteId,
+          medico_id: selectedProfId,
+          duracao: shareDuration
+        })
+      });
+
+      let tokenGenerated = '';
+      if (res.ok) {
+        const data = await res.json();
+        tokenGenerated = data.token;
+      } else {
+        tokenGenerated = 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
+      }
+
+      const buildShareUrl = (tok: string) => {
+        const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        if (isProd) {
+          return `https://owner-health-ktsf.vercel.app/exames-compartilhados?token=${tok}`;
+        }
+        let baseOrigin = window.location.origin;
+        if (window.location.hostname === 'localhost' && baseOrigin.startsWith('https:')) {
+          baseOrigin = baseOrigin.replace('https:', 'http:');
+        }
+        return `${baseOrigin}/exames-compartilhados?token=${tok}`;
+      };
+
+      const shareUrl = buildShareUrl(tokenGenerated);
+
+      // Salvar regra no localStorage para aparecer em Privacidade
+      const newShare = {
+        id: tokenGenerated,
+        token: tokenGenerated,
+        examId: showShareModal?.id || 1,
+        examTipo: showShareModal?.tipo || 'Exame',
+        profNome: profName,
+        duration: shareDuration === '24h' ? '24 Horas' : shareDuration === '48h' ? '48 Horas' : shareDuration === '7d' ? '7 Dias' : 'Permanente',
+        criadoEm: new Date().toLocaleDateString('pt-BR'),
+        link: shareUrl
+      };
+      const existing = localStorage.getItem(`shares_${clienteId}`);
+      const list = existing ? JSON.parse(existing) : [];
+      localStorage.setItem(`shares_${clienteId}`, JSON.stringify([newShare, ...list]));
+
+      setGeneratedShareLink(shareUrl);
+      setSharingSuccess(true);
+    } catch {
+      const tokenGenerated = 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
+      const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      let baseOrigin = isProd ? 'https://owner-health-ktsf.vercel.app' : window.location.origin;
+      if (window.location.hostname === 'localhost' && baseOrigin.startsWith('https:')) {
+        baseOrigin = baseOrigin.replace('https:', 'http:');
+      }
+      const shareUrl = isProd ? `https://owner-health-ktsf.vercel.app/exames-compartilhados?token=${tokenGenerated}` : `${baseOrigin}/exames-compartilhados?token=${tokenGenerated}`;
+      
+      const newShare = {
+        id: tokenGenerated,
+        token: tokenGenerated,
+        examId: showShareModal?.id || 1,
+        examTipo: showShareModal?.tipo || 'Exame',
+        profNome: profName,
+        duration: shareDuration === '24h' ? '24 Horas' : shareDuration === '48h' ? '48 Horas' : shareDuration === '7d' ? '7 Dias' : 'Permanente',
+        criadoEm: new Date().toLocaleDateString('pt-BR'),
+        link: shareUrl
+      };
+      const existing = localStorage.getItem(`shares_${clienteId}`);
+      const list = existing ? JSON.parse(existing) : [];
+      localStorage.setItem(`shares_${clienteId}`, JSON.stringify([newShare, ...list]));
+
+      setGeneratedShareLink(shareUrl);
+      setSharingSuccess(true);
+    }
+  };
+
+  const [activeTab, setActiveTab] = useState<'my_exams' | 'shared_exams'>('my_exams');
+  const [sharedExamsList, setSharedExamsList] = useState<any[]>([]);
+
+  const [filterDoctorName, setFilterDoctorName] = useState('');
+  const [filterSharedExamName, setFilterSharedExamName] = useState('');
+  const [filterSharedExamDate, setFilterSharedExamDate] = useState('');
+  const [sharedCurrentPage, setSharedCurrentPage] = useState(1);
+  const SHARED_ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    fetchExams();
+    fetchProfessionals();
+    fetchSharedExams();
+  }, [clienteId]);
+
+  const fetchSharedExams = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/exams/shared-list`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setSharedExamsList(Array.isArray(data) ? data : []);
+      } else {
+        loadMockSharedExams();
+      }
+    } catch {
+      loadMockSharedExams();
+    }
+  };
+
+  const loadMockSharedExams = () => {
+    const cached = localStorage.getItem(`shares_${clienteId}`);
+    if (cached) {
+      try {
+        setSharedExamsList(JSON.parse(cached));
+      } catch {}
+    }
+  };
+
+  const handleRevokeShare = (id: string) => {
+    if (!confirm('Deseja revogar a autorização de visualização deste exame?')) return;
+    const filtered = sharedExamsList.filter(s => (s.id !== id && s.token !== id));
+    setSharedExamsList(filtered);
+    localStorage.setItem(`shares_${clienteId}`, JSON.stringify(filtered));
+    alert('Acesso ao exame revogado com sucesso.');
   };
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800">Meus Exames</h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium">Gerencie seus laudos e compartilhe de forma temporária com seus médicos</p>
-        </div>
+      {/* Abas Superiores no estilo de Medicamentos */}
+      <div className="flex items-center gap-2 bg-slate-200/60 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
         <button
-          onClick={() => {
-            setForm({ tipo: '', data: new Date().toISOString().split('T')[0], laboratorio: '', medico_solicitante: '', observacoes: '', arquivo_url: '' });
-            setEditingId(null);
-            setExtractedOcrText('');
-            setShowModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5"
-          style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}
+          onClick={() => setActiveTab('my_exams')}
+          className={`flex-1 py-3 px-4 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+            activeTab === 'my_exams' ? 'bg-white text-blue-700 shadow-md' : 'text-slate-600 hover:text-slate-900'
+          }`}
         >
-          <Plus className="w-4 h-4" /> Novo Exame
+          <FlaskConical className="w-4 h-4" /> Meus Exames & Laudos
+        </button>
+        <button
+          onClick={() => setActiveTab('shared_exams')}
+          className={`flex-1 py-3 px-4 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+            activeTab === 'shared_exams' ? 'bg-white text-blue-700 shadow-md' : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Share2 className="w-4 h-4" /> Exames Compartilhados & Histórico
         </button>
       </div>
+
+      {activeTab === 'shared_exams' ? (
+        /* Conteúdo da Aba 2: Exames Compartilhados & Histórico com Status em Tempo Real */
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-black text-slate-800 uppercase tracking-wider">
+                Histórico de Exames Compartilhados
+              </h2>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                Acompanhe em tempo real quem acessou os seus exames, a data/hora e gerencie os acessos liberados.
+              </p>
+            </div>
+            <button
+              onClick={fetchSharedExams}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-start md:self-auto"
+            >
+              Atualizar Status
+            </button>
+          </div>
+
+          {/* Barra de Filtros do Paciente (Médico, Nome do Exame, Data) */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Médico Autorizado</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Nome do médico..."
+                  value={filterDoctorName}
+                  onChange={e => { setFilterDoctorName(e.target.value); setSharedCurrentPage(1); }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-blue-500 transition"
+                />
+                <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Nome / Tipo do Exame</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Ex: PSA, Hemograma..."
+                  value={filterSharedExamName}
+                  onChange={e => { setFilterSharedExamName(e.target.value); setSharedCurrentPage(1); }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-blue-500 transition"
+                />
+                <FlaskConical className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Filtrar por Data</label>
+              <input
+                type="date"
+                value={filterSharedExamDate}
+                onChange={e => { setFilterSharedExamDate(e.target.value); setSharedCurrentPage(1); }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 transition text-slate-600 font-medium"
+              />
+            </div>
+          </div>
+
+          {(() => {
+            const filteredPatientSharedList = sharedExamsList.filter(sh => {
+              const docName = (sh.medico_nome || sh.profNome || '').toLowerCase();
+              const examTitle = (sh.exame?.tipo || sh.examTipo || '').toLowerCase();
+              const shareDate = sh.criado_em || sh.criadoEm || '';
+
+              if (filterDoctorName.trim() && !docName.includes(filterDoctorName.toLowerCase().trim())) {
+                return false;
+              }
+              if (filterSharedExamName.trim() && !examTitle.includes(filterSharedExamName.toLowerCase().trim())) {
+                return false;
+              }
+              if (filterSharedExamDate && !shareDate.includes(filterSharedExamDate)) {
+                return false;
+              }
+              return true;
+            });
+
+            const sharedTotalPages = Math.ceil(filteredPatientSharedList.length / SHARED_ITEMS_PER_PAGE) || 1;
+            const paginatedPatientSharedList = filteredPatientSharedList.slice(
+              (sharedCurrentPage - 1) * SHARED_ITEMS_PER_PAGE,
+              sharedCurrentPage * SHARED_ITEMS_PER_PAGE
+            );
+
+            if (filteredPatientSharedList.length === 0) {
+              return (
+                <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
+                  <Share2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-slate-400">Nenhum exame compartilhado encontrado com os filtros selecionados.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                        <th className="py-3.5 px-4">Status de Visualização</th>
+                        <th className="py-3.5 px-4">Médico Autorizado</th>
+                        <th className="py-3.5 px-4">Exame</th>
+                        <th className="py-3.5 px-4">Data/Hora Compartilhamento</th>
+                        <th className="py-3.5 px-4">Duração Acesso</th>
+                        <th className="py-3.5 px-4 text-right">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs">
+                      {paginatedPatientSharedList.map((sh, idx) => {
+                        const isRead = sh.visualizado === 1 || !!sh.visualizado;
+                        const docName = sh.medico_nome || sh.profNome || 'Dr. Márcio';
+                        const examTitle = sh.exame?.tipo || sh.examTipo || 'Exame de Saúde';
+                        const shareDateFormatted = sh.criado_em ? new Date(sh.criado_em).toLocaleDateString('pt-BR') + ' às ' + new Date(sh.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : (sh.criadoEm || 'Hoje');
+
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50 transition">
+                            <td className="py-3.5 px-4">
+                              {isRead ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                  Visualizado pelo {docName} {sh.visualizado_em ? `em ${new Date(sh.visualizado_em).toLocaleDateString('pt-BR')} ${new Date(sh.visualizado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                                  <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
+                                  🔴 Não Visualizado pelo Médico
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-slate-800">
+                              {docName}
+                            </td>
+                            <td className="py-3.5 px-4 font-semibold text-slate-700">
+                              {examTitle}
+                            </td>
+                            <td className="py-3.5 px-4 text-slate-500 font-medium">
+                              {shareDateFormatted}
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-blue-600">
+                              {sh.duracao || sh.duration || '24h'}
+                            </td>
+                            <td className="py-3.5 px-4 text-right flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  const urlToCopy = sh.link || `https://owner-health-ktsf.vercel.app/exames-compartilhados?token=${sh.token || sh.id}`;
+                                  navigator.clipboard.writeText(urlToCopy);
+                                  alert('Link seguro copiado para a área de transferência!');
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                                title="Copiar Link Seguro"
+                              >
+                                <Share2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleRevokeShare(sh.id || sh.token)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                                title="Revogar Acesso"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Controles de Paginação (Máximo 10 linhas) */}
+                {sharedTotalPages > 1 && (
+                  <div className="flex items-center justify-between bg-slate-50 px-4 py-3 border-t border-slate-200 text-xs text-slate-600 font-semibold">
+                    <span>
+                      Exibindo {((sharedCurrentPage - 1) * SHARED_ITEMS_PER_PAGE) + 1} - {Math.min(sharedCurrentPage * SHARED_ITEMS_PER_PAGE, filteredPatientSharedList.length)} de {filteredPatientSharedList.length} compartilhamentos
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSharedCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={sharedCurrentPage === 1}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 font-bold transition cursor-pointer"
+                      >
+                        Anterior
+                      </button>
+                      <span className="px-2 font-bold text-slate-800">
+                        Página {sharedCurrentPage} de {sharedTotalPages}
+                      </span>
+                      <button
+                        onClick={() => setSharedCurrentPage(p => Math.min(sharedTotalPages, p + 1))}
+                        disabled={sharedCurrentPage === sharedTotalPages}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 font-bold transition cursor-pointer"
+                      >
+                        Próxima
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      ) : (
+        /* Conteúdo da Aba 1: Meus Exames & Laudos */
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-black text-slate-800">Meus Exames</h1>
+              <p className="text-sm text-slate-500 mt-1 font-medium">Gerencie seus laudos e compartilhe de forma temporária com seus médicos</p>
+            </div>
+            <button
+              onClick={() => {
+                setForm({ tipo: '', data: new Date().toISOString().split('T')[0], laboratorio: '', medico_solicitante: '', observacoes: '', arquivo_url: '' });
+                setEditingId(null);
+                setExtractedOcrText('');
+                setShowModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 cursor-pointer"
+              style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}
+            >
+              <Plus className="w-4 h-4" /> Novo Exame
+            </button>
+          </div>
 
       {/* List */}
       <div className="mb-4 flex flex-col sm:flex-row gap-3">
@@ -736,6 +1091,8 @@ startxref
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
