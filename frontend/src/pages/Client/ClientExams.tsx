@@ -342,6 +342,7 @@ startxref
           observacoes: showShareModal?.observacoes || '',
           cliente_id: clienteId,
           medico_id: selectedProfId,
+          medico_nome: profName,
           duracao: shareDuration
         })
       });
@@ -385,6 +386,7 @@ startxref
 
       setGeneratedShareLink(shareUrl);
       setSharingSuccess(true);
+      fetchSharedExams();
     } catch {
       const tokenGenerated = 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
       const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';

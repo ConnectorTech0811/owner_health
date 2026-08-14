@@ -8,7 +8,9 @@ const {
   shareExam,
   getSharedExamByToken,
   markSharedExamAsRead,
-  listSharedExams
+  listSharedExams,
+  removeSharedExamForDoctor,
+  bulkRemoveSharedExamsForDoctor
 } = require('../controllers/examController');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -20,8 +22,10 @@ router.delete('/:id', deleteExam);
 
 // Rotas de Compartilhamento de Exames (LGPD / Links seguros por token)
 router.post('/share', authenticateToken, shareExam);
+router.post('/share-bulk/delete', authenticateToken, bulkRemoveSharedExamsForDoctor);
 router.get('/shared-list', authenticateToken, listSharedExams);
 router.get('/share/:token', authenticateToken, getSharedExamByToken);
 router.put('/share/:token/read', authenticateToken, markSharedExamAsRead);
+router.delete('/share/:token', authenticateToken, removeSharedExamForDoctor);
 
 module.exports = router;

@@ -26,7 +26,7 @@ export const NotificationBell: React.FC = () => {
   useEffect(() => {
     if (isLogged) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000); // Polling cada 30s
+      const interval = setInterval(fetchNotifications, 4000); // Real-time polling a cada 4s
       return () => clearInterval(interval);
     }
   }, [isLogged]);
@@ -329,7 +329,15 @@ export const NotificationBell: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedNotification(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-xl hover:bg-slate-100">
+                <button
+                  onClick={async () => {
+                    if (selectedNotification && selectedNotification.lida === 0) {
+                      await markAsRead(selectedNotification.id);
+                    }
+                    setSelectedNotification(null);
+                  }}
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-xl hover:bg-slate-100 cursor-pointer"
+                >
                   <X size={20} />
                 </button>
               </div>
@@ -342,7 +350,13 @@ export const NotificationBell: React.FC = () => {
                 {(selectedNotification.tipo === 'acesso_prontuario' || selectedNotification.mensagem.includes('prontuário')) && (
                   <a
                     href={`/professional/patients?cpf=${selectedNotification.referencia_id || ''}`}
-                    className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center"
+                    onClick={async () => {
+                      if (selectedNotification && selectedNotification.lida === 0) {
+                        await markAsRead(selectedNotification.id);
+                      }
+                      setSelectedNotification(null);
+                    }}
+                    className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center cursor-pointer"
                   >
                     Ver Prontuário
                   </a>
@@ -350,7 +364,13 @@ export const NotificationBell: React.FC = () => {
                 {selectedNotification.tipo === 'documento_emitido' && (
                   <a
                     href={`/client/prescriptions?viewId=${selectedNotification.referencia_id || ''}`}
-                    className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center"
+                    onClick={async () => {
+                      if (selectedNotification && selectedNotification.lida === 0) {
+                        await markAsRead(selectedNotification.id);
+                      }
+                      setSelectedNotification(null);
+                    }}
+                    className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center cursor-pointer"
                   >
                     Visualizar Documento
                   </a>
@@ -358,12 +378,26 @@ export const NotificationBell: React.FC = () => {
                 {(selectedNotification.tipo === 'exame_compartilhado' || selectedNotification.mensagem.includes('compartilhou o laudo')) && (
                   <a
                     href={`/exames-compartilhados?token=${selectedNotification.referencia_id || ''}`}
-                    className="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center"
+                    onClick={async () => {
+                      if (selectedNotification && selectedNotification.lida === 0) {
+                        await markAsRead(selectedNotification.id);
+                      }
+                      setSelectedNotification(null);
+                    }}
+                    className="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl text-xs shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center cursor-pointer"
                   >
                     Visualizar Exame
                   </a>
                 )}
-                <button onClick={() => setSelectedNotification(null)} className="px-6 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-300 transition-colors">
+                <button
+                  onClick={async () => {
+                    if (selectedNotification && selectedNotification.lida === 0) {
+                      await markAsRead(selectedNotification.id);
+                    }
+                    setSelectedNotification(null);
+                  }}
+                  className="px-6 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-300 transition-colors cursor-pointer"
+                >
                   Fechar
                 </button>
               </div>

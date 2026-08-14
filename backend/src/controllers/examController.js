@@ -13,6 +13,7 @@ const ensureShareTableExist = async () => {
         table.string('paciente_nome', 255);
         table.integer('medico_id').nullable();
         table.string('medico_nome', 255).nullable();
+        table.string('medico_email', 255).nullable();
         table.string('duracao', 50).defaultTo('24h');
         table.boolean('visualizado').defaultTo(false);
         table.dateTime('visualizado_em').nullable();
@@ -25,6 +26,18 @@ const ensureShareTableExist = async () => {
         await db.schema.table('exames_compartilhados', table => {
           table.boolean('visualizado').defaultTo(false);
           table.dateTime('visualizado_em').nullable();
+        });
+      }
+      const hasEmail = await db.schema.hasColumn('exames_compartilhados', 'medico_email');
+      if (!hasEmail) {
+        await db.schema.table('exames_compartilhados', table => {
+          table.string('medico_email', 255).nullable();
+        });
+      }
+      const hasRem = await db.schema.hasColumn('exames_compartilhados', 'removido_pelo_medico');
+      if (!hasRem) {
+        await db.schema.table('exames_compartilhados', table => {
+          table.boolean('removido_pelo_medico').defaultTo(false);
         });
       }
     }
@@ -124,25 +137,23 @@ const shareExam = async (req, res) => {
     const pacienteNome = client ? client.nome : 'Cliente Teste';
 
     let medicoNome = null;
+    let medicoEmail = null;
     if (medico_id) {
       try {
         const doc = await db('profissionais').where({ id: medico_id }).first();
-        if (doc) medicoNome = doc.nome;
+        if (doc) {
+          medicoNome = doc.nome;
+          medicoEmail = doc.email;
+        }
       } catch {}
     }
-    if (!medicoNome) medicoNome = 'Dr. Márcio';
+    if (!medicoNome) medicoNome = req.body.medico_nome || 'Dr. Márcio';
+    if (!medicoEmail) medicoEmail = req.body.medico_email || 'marcio@clinica.com';
 
     const token = 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
     const criadoEm = new Date();
-    let expiraEm = null;
-    const dur = duracao || '24h';
-    if (dur === '24h') {
-      expiraEm = new Date(criadoEm.getTime() + 24 * 60 * 60 * 1000);
-    } else if (dur === '48h') {
-      expiraEm = new Date(criadoEm.getTime() + 48 * 60 * 60 * 1000);
-    } else if (dur === '7d') {
-      expiraEm = new Date(criadoEm.getTime() + 7 * 24 * 60 * 60 * 1000);
-    }
+    const dur = duracao || 'Permanente';
+    const expiraEm = null; // Exames compartilhados ficam permanentes no histórico do médico
 
     const record = {
       token,
@@ -151,6 +162,7 @@ const shareExam = async (req, res) => {
       paciente_nome: pacienteNome,
       medico_id: medico_id ? parseInt(medico_id) : null,
       medico_nome: medicoNome,
+      medico_email: medicoEmail,
       duracao: dur,
       visualizado: 0,
       visualizado_em: null,
@@ -234,37 +246,66 @@ const getSharedExamByToken = async (req, res) => {
       return res.status(404).json({ error: 'Link de exame compartilhado não encontrado ou inválido.' });
     }
 
-    if (share.expira_em && new Date(share.expira_em) < new Date()) {
-      return res.status(410).json({ error: 'O link deste exame compartilhado expirou por razões de segurança.' });
-    }
-
     const user = req.user || {};
+    const userEmail = (user.email || '').toLowerCase().trim();
+    const userName = (user.nome || '').toLowerCase().trim();
+
     let userProfId = user.profissional_id ? parseInt(user.profissional_id) : null;
     let userClientId = user.cliente_id ? parseInt(user.cliente_id) : null;
-    const userEmail = (user.email || '').toLowerCase();
-    const userName = (user.nome || '').toLowerCase();
     const isAdmin = user.eh_admin || user.tipo === 'admin' || (user.roles && user.roles.includes('admin'));
 
-    if (!userProfId && (user.eh_profissional || user.tipo_profissional)) {
+    let profRecord = null;
+    try {
+      profRecord = await db('profissionais')
+        .where({ usuario_id: user.id })
+        .orWhereRaw('LOWER(email) = ?', [userEmail])
+        .first();
+    } catch {}
+
+    if (!userProfId && profRecord) {
+      userProfId = profRecord.id;
+    }
+
+    if (!userClientId) {
       try {
-        const prof = await db('profissionais').where({ usuario_id: user.id }).orWhere({ email: user.email }).first();
-        if (prof) userProfId = prof.id;
+        const client = await db('clientes').where({ usuario_id: user.id }).orWhereRaw('LOWER(email) = ?', [userEmail]).first();
+        if (client) userClientId = client.id;
       } catch {}
     }
 
+    const profEmail = (profRecord && profRecord.email ? profRecord.email : userEmail).toLowerCase().trim();
+    const profName = (profRecord && profRecord.nome ? profRecord.nome : userName).toLowerCase().trim();
+
+    const isDoctorRole = user.eh_profissional || user.tipo_profissional === 'medico' || user.tipo === 'profissional' || (user.roles && user.roles.includes('professional')) || !!userProfId || !!profRecord;
+
     let isAuthorized = false;
 
+    // 1. Paciente proprietário do exame
     if (userClientId && parseInt(share.cliente_id) === userClientId) {
       isAuthorized = true;
-    } else if (userProfId && share.medico_id && parseInt(share.medico_id) === userProfId) {
+    }
+    // 2. Administrador do sistema
+    else if (isAdmin) {
       isAuthorized = true;
-    } else if (user.eh_profissional || user.tipo_profissional === 'medico' || userProfId) {
+    }
+    // 3. Qualquer médico/profissional cadastrado logado (Dr. Márcio marcio@clinica.com ou médico da clínica)
+    else if (isDoctorRole) {
       isAuthorized = true;
-    } else if (isAdmin) {
+    }
+    // 4. Médico por E-mail (marcio@clinica.com)
+    else if (userEmail && ((share.medico_email && share.medico_email.toLowerCase().trim() === userEmail) || (profEmail && share.medico_email && share.medico_email.toLowerCase().trim() === profEmail))) {
       isAuthorized = true;
-    } else if (share.medico_nome) {
-      const targetDocName = share.medico_nome.toLowerCase();
-      if (userName && (targetDocName.includes(userName) || userName.includes(targetDocName))) {
+    }
+    // 5. Médico por ID do profissional
+    else if (userProfId && share.medico_id && parseInt(share.medico_id) === userProfId) {
+      isAuthorized = true;
+    }
+    // 6. Médico por Nome (aproximação)
+    else if (share.medico_nome) {
+      const targetDocName = share.medico_nome.toLowerCase().trim();
+      if (profName && (profName.includes(targetDocName) || targetDocName.includes(profName))) {
+        isAuthorized = true;
+      } else if (userName && (userName.includes(targetDocName) || targetDocName.includes(userName))) {
         isAuthorized = true;
       }
     }
@@ -396,20 +437,30 @@ const listSharedExams = async (req, res) => {
   try {
     await ensureShareTableExist();
     const user = req.user || {};
+    const userEmail = (user.email || '').toLowerCase().trim();
+
     let userProfId = user.profissional_id ? parseInt(user.profissional_id) : null;
     let userClientId = user.cliente_id ? parseInt(user.cliente_id) : null;
     const isAdmin = user.eh_admin || user.tipo === 'admin' || (user.roles && user.roles.includes('admin'));
 
-    if (!userProfId && (user.eh_profissional || user.tipo_profissional)) {
-      try {
-        const prof = await db('profissionais').where({ usuario_id: user.id }).orWhere({ email: user.email }).first();
-        if (prof) userProfId = prof.id;
-      } catch {}
+    let profRecord = null;
+    try {
+      profRecord = await db('profissionais')
+        .where({ usuario_id: user.id })
+        .orWhereRaw('LOWER(email) = ?', [userEmail])
+        .first();
+    } catch {}
+
+    if (!userProfId && profRecord) {
+      userProfId = profRecord.id;
     }
 
     if (!userClientId) {
       try {
-        const client = await db('clientes').where({ usuario_id: user.id }).orWhere({ email: user.email }).first();
+        const client = await db('clientes')
+          .where({ usuario_id: user.id })
+          .orWhereRaw('LOWER(email) = ?', [userEmail])
+          .first();
         if (client) userClientId = client.id;
       } catch {}
     }
@@ -421,33 +472,14 @@ const listSharedExams = async (req, res) => {
       shares = await dbHelper.query('exames_compartilhados', 'select', {});
     }
 
-    if (!shares || shares.length === 0) {
-      const demoRecord = {
-        token: 'sh_demo_psa_marcio',
-        exame_id: 1,
-        cliente_id: 1,
-        paciente_nome: 'Cliente Teste',
-        medico_id: userProfId || 1,
-        medico_nome: 'Dr. Márcio',
-        duracao: '24h',
-        visualizado: 0,
-        visualizado_em: null,
-        criado_em: new Date().toISOString()
-      };
-      try {
-        await db('exames_compartilhados').insert(demoRecord);
-        shares = [demoRecord];
-      } catch {
-        shares = [demoRecord];
-      }
-    }
-
-    const isDoctor = user.eh_profissional || user.tipo_profissional === 'medico' || userProfId;
+    const isDoctor = user.eh_profissional || user.tipo_profissional === 'medico' || user.tipo === 'profissional' || (user.roles && user.roles.includes('professional')) || !!userProfId || !!profRecord;
 
     const filteredShares = (shares || []).filter(s => {
+      if (s.removido_pelo_medico) return false;
       if (isAdmin) return true;
       if (userClientId && parseInt(s.cliente_id) === userClientId) return true;
       if (userProfId && s.medico_id && parseInt(s.medico_id) === userProfId) return true;
+      if (userEmail && s.medico_email && s.medico_email.toLowerCase().trim() === userEmail) return true;
       if (user.nome && s.medico_nome && (s.medico_nome.toLowerCase().includes(user.nome.toLowerCase()) || user.nome.toLowerCase().includes(s.medico_nome.toLowerCase()))) return true;
       if (isDoctor) return true;
       return false;
@@ -475,6 +507,63 @@ const listSharedExams = async (req, res) => {
   }
 };
 
+const removeSharedExamForDoctor = async (req, res) => {
+  try {
+    await ensureShareTableExist();
+    const { token } = req.params;
+    if (!token) return res.status(400).json({ error: 'Token é obrigatório' });
+
+    try {
+      if (!isNaN(token)) {
+        await db('exames_compartilhados').where({ id: parseInt(token) }).update({ removido_pelo_medico: true });
+        await db('exames_compartilhados').where({ id: parseInt(token) }).del();
+      }
+      await db('exames_compartilhados').where({ token }).update({ removido_pelo_medico: true });
+      await db('exames_compartilhados').where({ token }).del();
+    } catch {
+      await dbHelper.query('exames_compartilhados', 'delete', { token });
+    }
+
+    return res.json({ message: 'Exame removido com sucesso do painel do médico (mantido intacto na conta do paciente).' });
+  } catch (err) {
+    console.error('Erro ao remover exame compartilhado para o médico:', err);
+    return res.status(500).json({ error: 'Erro ao remover exame compartilhado' });
+  }
+};
+
+const bulkRemoveSharedExamsForDoctor = async (req, res) => {
+  try {
+    await ensureShareTableExist();
+    const { tokens, ids } = req.body;
+    const items = tokens || ids || [];
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Nenhum item selecionado para remoção' });
+    }
+
+    try {
+      const numericIds = items.map(i => parseInt(i)).filter(i => !isNaN(i));
+      await db('exames_compartilhados')
+        .whereIn('token', items)
+        .orWhereIn('id', numericIds)
+        .update({ removido_pelo_medico: true });
+
+      await db('exames_compartilhados')
+        .whereIn('token', items)
+        .orWhereIn('id', numericIds)
+        .del();
+    } catch {
+      for (const item of items) {
+        await dbHelper.query('exames_compartilhados', 'delete', { token: item });
+      }
+    }
+
+    return res.json({ message: `${items.length} exames removidos com sucesso do seu painel médico (mantidos intactos nas contas dos pacientes).` });
+  } catch (err) {
+    console.error('Erro ao remover exames compartilhados em massa:', err);
+    return res.status(500).json({ error: 'Erro ao remover exames em massa' });
+  }
+};
+
 module.exports = {
   getExams,
   createExam,
@@ -483,5 +572,7 @@ module.exports = {
   shareExam,
   getSharedExamByToken,
   markSharedExamAsRead,
-  listSharedExams
+  listSharedExams,
+  removeSharedExamForDoctor,
+  bulkRemoveSharedExamsForDoctor
 };

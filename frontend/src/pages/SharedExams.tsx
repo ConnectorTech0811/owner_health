@@ -13,7 +13,8 @@ import {
   Loader2,
   AlertCircle,
   Eye,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from 'lucide-react';
 import { API_URL } from '../config';
 
@@ -54,7 +55,27 @@ export const SharedExams: React.FC = () => {
   const [filterExamName, setFilterExamName] = useState('');
   const [filterExamDate, setFilterExamDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedShareTokens, setSelectedShareTokens] = useState<string[]>([]);
   const ITEMS_PER_PAGE = 10;
+
+  const handleBulkDelete = async () => {
+    if (selectedShareTokens.length === 0) return;
+    if (!window.confirm(`Tem certeza que deseja remover os ${selectedShareTokens.length} exames selecionados do seu painel? Os exames continuarão salvos e intactos na conta dos pacientes.`)) {
+      return;
+    }
+    try {
+      await fetch(`${API_URL}/api/exams/share-bulk/delete`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ tokens: selectedShareTokens })
+      });
+      setAllShares(prev => prev.filter((s: any) => !selectedShareTokens.includes(s.token) && !selectedShareTokens.includes(String(s.id))));
+      setSelectedShareTokens([]);
+    } catch {
+      setAllShares(prev => prev.filter((s: any) => !selectedShareTokens.includes(s.token) && !selectedShareTokens.includes(String(s.id))));
+      setSelectedShareTokens([]);
+    }
+  };
 
   const authToken = localStorage.getItem('token');
   const headers = {
@@ -68,7 +89,62 @@ export const SharedExams: React.FC = () => {
       return;
     }
     fetchData();
+
+    const intervalId = setInterval(() => {
+      if (!tokenParam) {
+        fetchListSilently();
+      }
+    }, 4000);
+
+    return () => clearInterval(intervalId);
   }, [tokenParam, authToken]);
+
+  const fetchListSilently = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/exams/shared-list`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setAllShares(data);
+        }
+      }
+    } catch {}
+  };
+
+  const fetchList = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/exams/shared-list`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setAllShares(data);
+        } else {
+          loadMockList();
+        }
+      } else {
+        loadMockList();
+      }
+    } catch {
+      loadMockList();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteShare = async (tokenOrId: string | number) => {
+    if (!window.confirm('Tem certeza que deseja remover este exame do seu painel? O exame continuará salvo e intacto na conta do paciente.')) {
+      return;
+    }
+    try {
+      await fetch(`${API_URL}/api/exams/share/${tokenOrId}`, {
+        method: 'DELETE',
+        headers
+      });
+      setAllShares(prev => prev.filter((s: any) => s.token !== tokenOrId && s.id !== tokenOrId));
+    } catch {
+      setAllShares(prev => prev.filter((s: any) => s.token !== tokenOrId && s.id !== tokenOrId));
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -165,25 +241,7 @@ export const SharedExams: React.FC = () => {
     setLoading(false);
   };
 
-  const fetchList = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/exams/shared-list`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setAllShares(data);
-        } else {
-          loadMockList();
-        }
-      } else {
-        loadMockList();
-      }
-    } catch {
-      loadMockList();
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const loadMockList = () => {
     let items: any[] = [];
@@ -568,6 +626,30 @@ trailer << /Size 6 /Root 1 0 R >> startxref 700 %%EOF`;
               </div>
             </div>
 
+            {/* Barra de Ações em Massa */}
+            {selectedShareTokens.length > 0 && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-fadeIn">
+                <div className="flex items-center gap-2 text-indigo-900 text-xs font-black">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <span>{selectedShareTokens.length} {selectedShareTokens.length === 1 ? 'exame selecionado' : 'exames selecionados'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedShareTokens([])}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-white text-xs font-bold transition cursor-pointer"
+                  >
+                    Desmarcar Todos
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Excluir Selecionados ({selectedShareTokens.length})
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Tabela de Exames em Lista com Paginação Max 10 Linhas */}
             {filteredSharesList.length === 0 ? (
               <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
@@ -580,6 +662,23 @@ trailer << /Size 6 /Root 1 0 R >> startxref 700 %%EOF`;
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                        <th className="py-3.5 px-4 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={paginatedShares.length > 0 && paginatedShares.every(sh => selectedShareTokens.includes(sh.token))}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                const allTokens = paginatedShares.map(sh => sh.token);
+                                setSelectedShareTokens(prev => Array.from(new Set([...prev, ...allTokens])));
+                              } else {
+                                const allTokens = paginatedShares.map(sh => sh.token);
+                                setSelectedShareTokens(prev => prev.filter(tok => !allTokens.includes(tok)));
+                              }
+                            }}
+                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500/20 border-slate-300 cursor-pointer"
+                            title="Selecionar todos os exames da página"
+                          />
+                        </th>
                         <th className="py-3.5 px-4">Status de Visualização</th>
                         <th className="py-3.5 px-4">Paciente</th>
                         <th className="py-3.5 px-4">Exame</th>
@@ -591,8 +690,23 @@ trailer << /Size 6 /Root 1 0 R >> startxref 700 %%EOF`;
                     <tbody className="divide-y divide-slate-100 text-xs">
                       {paginatedShares.map((sh, idx) => {
                         const isRead = sh.visualizado === 1 || !!(sh as any).visualizado;
+                        const isSelected = selectedShareTokens.includes(sh.token);
                         return (
-                          <tr key={idx} className={`hover:bg-slate-50/80 transition ${!isRead ? 'bg-red-50/20 font-semibold' : ''}`}>
+                          <tr key={idx} className={`hover:bg-slate-50/80 transition ${isSelected ? 'bg-indigo-50/40' : !isRead ? 'bg-red-50/20 font-semibold' : ''}`}>
+                            <td className="py-3.5 px-4 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    setSelectedShareTokens(prev => [...prev, sh.token]);
+                                  } else {
+                                    setSelectedShareTokens(prev => prev.filter(t => t !== sh.token));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500/20 border-slate-300 cursor-pointer"
+                              />
+                            </td>
                             <td className="py-3.5 px-4">
                               {isRead ? (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
@@ -619,24 +733,34 @@ trailer << /Size 6 /Root 1 0 R >> startxref 700 %%EOF`;
                               {sh.duracao || '24h'}
                             </td>
                             <td className="py-3.5 px-4 text-right">
-                              <button
-                                onClick={async () => {
-                                  if (!isRead) {
-                                    try {
-                                      await fetch(`${API_URL}/api/exams/share/${sh.token}/read`, {
-                                        method: 'PUT',
-                                        headers
-                                      });
-                                    } catch {}
-                                  }
-                                  navigate(`/exames-compartilhados?token=${sh.token}`);
-                                }}
-                                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition hover:-translate-y-0.5 shadow-sm cursor-pointer ${
-                                  !isRead ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
-                                }`}
-                              >
-                                <Eye className="w-3.5 h-3.5" /> Visualizar Exame
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={async () => {
+                                    if (!isRead) {
+                                      try {
+                                        await fetch(`${API_URL}/api/exams/share/${sh.token}/read`, {
+                                          method: 'PUT',
+                                          headers
+                                        });
+                                      } catch {}
+                                    }
+                                    navigate(`/exames-compartilhados?token=${sh.token}`);
+                                  }}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition hover:-translate-y-0.5 shadow-sm cursor-pointer ${
+                                    !isRead ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+                                  }`}
+                                >
+                                  <Eye className="w-3.5 h-3.5" /> Visualizar Exame
+                                </button>
+
+                                <button
+                                  onClick={() => handleDeleteShare(sh.token || (sh as any).id)}
+                                  title="Remover este exame do meu painel médico (mantém intacto na conta do paciente)"
+                                  className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
