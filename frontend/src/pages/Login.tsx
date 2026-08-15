@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Lock, Mail, Eye, EyeOff, Loader2, Check, HeartPulse, User, Stethoscope, Building2, ChevronRight } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, Loader2, Check, Activity, Calendar, BarChart3, User, Stethoscope, Building2, ChevronRight, HeartPulse } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import loginBg from '../assets/login_bg.png';
 import { API_URL } from '../config';
 
 export const Login = () => {
@@ -51,7 +50,6 @@ export const Login = () => {
       const primaryRole = roles[0] || 'client';
       localStorage.setItem('activeRole', primaryRole);
 
-      // Salva dados do profissional (médico, secretário, etc.)
       if (data.user.empresa_id) {
         localStorage.setItem('companyId', String(data.user.empresa_id));
       }
@@ -106,8 +104,8 @@ export const Login = () => {
       label: 'Sou Paciente / Cliente',
       desc: 'Cadastre seu perfil pessoal',
       path: '/register/client',
-      color: '#2563eb',
-      bg: '#eff6ff',
+      color: '#3b82f6',
+      bg: 'rgba(59, 130, 246, 0.1)',
     },
     {
       id: 'register-professional',
@@ -115,8 +113,8 @@ export const Login = () => {
       label: 'Sou Profissional de Saúde',
       desc: 'Médico, fisioterapeuta, nutricionista...',
       path: '/register/professional',
-      color: '#0d9488',
-      bg: '#f0fdfa',
+      color: '#14b8a6',
+      bg: 'rgba(20, 184, 166, 0.1)',
     },
     {
       id: 'register-company',
@@ -124,249 +122,273 @@ export const Login = () => {
       label: 'Sou Hospital / Clínica',
       desc: 'Cadastre sua instituição',
       path: '/register/company',
-      color: '#7c3aed',
-      bg: '#f5f3ff',
+      color: '#8b5cf6',
+      bg: 'rgba(139, 92, 246, 0.1)',
     },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-8 relative overflow-hidden">
-      <div className="max-w-4xl w-full bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row md:h-[700px] min-h-[500px] relative z-10">
+    <div className="min-h-screen bg-[#070c19] flex w-full font-sans antialiased text-slate-100 overflow-x-hidden">
+      <div className="w-full flex flex-col lg:flex-row min-h-screen">
 
-        {/* Left Panel - Brand */}
-        <div className="hidden md:flex w-1/2 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%)' }}>
-          <img
-            src={loginBg}
-            alt="Owner Health"
-            className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60"
-          />
+        {/* Painel Esquerdo - Branding & Features */}
+        <div className="hidden lg:flex lg:w-1/2 relative bg-[#060b18] bg-login-grid p-12 xl:p-16 flex-col justify-between overflow-hidden border-r border-slate-800/60 select-none">
 
-          {/* Overlay gradient */}
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(30,58,138,0.95) 0%, rgba(29,78,216,0.3) 60%, transparent 100%)' }} />
+          {/* Luzes de fundo decorativas */}
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
 
-          {/* Decorative circles */}
-          <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #93c5fd, transparent)' }} />
-          <div className="absolute top-1/3 -right-20 w-56 h-56 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #60a5fa, transparent)' }} />
-          <div className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #3b82f6, transparent)' }} />
-
-          {/* ECG Line SVG decoration */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-10">
-            <svg viewBox="0 0 400 80" className="w-full" fill="none" stroke="white" strokeWidth="2.5">
-              <polyline points="0,40 60,40 80,10 100,70 120,40 160,40 180,20 200,60 220,40 400,40" />
-            </svg>
+          {/* Logo Superior */}
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
+              <HeartPulse className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-white">
+              Owner<span className="text-blue-500 font-extrabold">Health</span>
+            </span>
           </div>
 
-          {/* Content */}
-          <div className="relative z-10 flex flex-col justify-between h-full w-full p-10 text-white">
-            {/* Logo top */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: 'rgba(255,255,255,0.15)' }}>
-                <HeartPulse className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <span className="text-lg font-black tracking-tight">Owner Health</span>
-                <p className="text-xs font-medium opacity-70">Sistema de Gestão Clínica</p>
-              </div>
+          {/* Conteúdo Central */}
+          <div className="relative z-10 space-y-8 my-auto py-8 max-w-xl">
+            {/* Tag Badge */}
+            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-blue-950/70 border border-blue-800/40 text-blue-300 text-xs font-semibold backdrop-blur-md shadow-inner">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              <span>Sistema de Gestão em Saúde</span>
             </div>
 
-            {/* Bottom text */}
-            <div className="pb-6 text-center">
-              <h2 className="text-4xl font-black mb-3 drop-shadow-md leading-tight">
-                Bem-vindo de<br />volta!
-              </h2>
-              <p className="text-sm leading-relaxed max-w-xs mx-auto font-medium opacity-80">
-                Acesse o painel do Owner Health para gerenciar pré-atendimentos e otimizar o fluxo da sua clínica.
+            {/* Título Principal */}
+            <div className="space-y-4">
+              <h1 className="font-serif-heading text-5xl xl:text-6xl font-normal text-slate-50 leading-[1.15] tracking-tight">
+                Saúde gerenciada<br />
+                <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-blue-200 drop-shadow-sm">
+                  com inteligência.
+                </span>
+              </h1>
+              <p className="text-slate-400 text-base leading-relaxed max-w-md font-normal pt-1">
+                Acesse prontuários, agendamentos e relatórios clínicos em uma plataforma projetada para profissionais de saúde exigentes.
               </p>
-
             </div>
+
+            {/* Lista de Recursos */}
+            <div className="space-y-3.5 pt-2 max-w-md">
+              <div className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-[#0f172a]/70 border border-slate-800/80 backdrop-blur-md hover:border-slate-700/80 transition-all group">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Activity className="w-5 h-5 text-blue-400" />
+                </div>
+                <span className="text-slate-200 font-medium text-sm">Acesso ao Prontuário</span>
+              </div>
+
+              <div className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-[#0f172a]/70 border border-slate-800/80 backdrop-blur-md hover:border-slate-700/80 transition-all group">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Calendar className="w-5 h-5 text-blue-400" />
+                </div>
+                <span className="text-slate-200 font-medium text-sm">Agenda Inteligente & Telemedicina</span>
+              </div>
+
+              <div className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-[#0f172a]/70 border border-slate-800/80 backdrop-blur-md hover:border-slate-700/80 transition-all group">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <BarChart3 className="w-5 h-5 text-blue-400" />
+                </div>
+                <span className="text-slate-200 font-medium text-sm">Dashboards Interativos</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Rodapé Esquerdo */}
+          <div className="relative z-10 text-slate-500 text-xs font-medium space-y-1">
+            <p>© {new Date().getFullYear()} Owner Health. Todos os direitos reservados.</p>
+            <p className="text-[11px] text-slate-500">
+              Desenvolvido por{' '}
+              <a
+                href="https://www.connectortech.com.br/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 font-semibold hover:text-blue-300 transition-colors hover:underline"
+              >
+                ConnectorTech
+              </a>
+            </p>
           </div>
         </div>
 
-        {/* Right Panel - Form */}
-        <div className="w-full md:w-1/2 flex flex-col p-6 lg:p-8 bg-white relative animate-fadeIn overflow-y-auto">
+        {/* Painel Direito - Form de Login */}
+        <div className="w-full lg:w-1/2 bg-[#090e1a] flex flex-col justify-center px-6 py-12 lg:px-16 xl:px-24 relative overflow-y-auto">
 
-          {/* Mobile logo */}
-          <div className="flex md:hidden items-center gap-2 mb-8 justify-center">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
-              <HeartPulse className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-black text-slate-800">Owner Health</span>
-          </div>
-
-          <div className="mb-4 text-center">
-            {/* Desktop icon */}
-            <div className="hidden md:flex w-12 h-12 rounded-xl items-center justify-center mx-auto mb-3 shadow-md" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
+          {/* Logo Mobile */}
+          <div className="flex lg:hidden items-center gap-3 mb-10 justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
               <HeartPulse className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Entrar</h2>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">Acesse sua conta para continuar</p>
-            <div className="w-12 h-1 mx-auto mt-3 rounded-full" style={{ background: 'linear-gradient(90deg, #1d4ed8, #2563eb)' }} />
+            <span className="text-xl font-bold tracking-tight text-white">
+              Owner<span className="text-blue-500 font-extrabold">Health</span>
+            </span>
           </div>
 
-          <form className="space-y-3.5" onSubmit={handleLogin}>
+
+          <div className="max-w-md w-full mx-auto space-y-8 animate-fadeIn">
+
+            {/* Cabeçalho do Form */}
+            <div>
+              <h2 className="font-serif-heading text-3xl lg:text-4xl text-white font-normal tracking-tight mb-2">
+                Bem-vindo de volta
+              </h2>
+              <p className="text-slate-400 text-sm font-normal">
+                Acesse sua conta para continuar
+              </p>
+            </div>
+
+            {/* Mensagem de Erro */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-semibold animate-shake flex items-start gap-2">
-                <span className="mt-0.5">⚠️</span>
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm font-medium animate-shake flex items-start gap-2.5">
+                <span className="shrink-0 mt-0.5">⚠️</span>
                 <span>{error}</span>
               </div>
             )}
 
-            {/* Email */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-slate-700">E-mail</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-400" />
+            {/* Form de Autenticação */}
+            <form onSubmit={handleLogin} className="space-y-6">
+
+              {/* E-mail */}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                  E-MAIL PROFISSIONAL
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
+                    <Mail className="h-5 w-5" />
+                  </div>
+                  <input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-[#11192e] border border-slate-800 text-slate-100 rounded-xl pl-11 pr-4 py-3.5 text-sm placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium"
+                    placeholder="dr.nome@clinica.com.br"
+                    autoComplete="email"
+                  />
                 </div>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:bg-white transition-all font-medium placeholder:text-slate-400 text-xs"
-                  style={{ '--tw-ring-color': '#1d4ed8' } as React.CSSProperties}
-                  onFocus={e => e.currentTarget.style.borderColor = '#1d4ed8'}
-                  onBlur={e => e.currentTarget.style.borderColor = ''}
-                  placeholder="seu@email.com"
-                  autoComplete="email"
-                />
               </div>
-            </div>
 
-            {/* Password */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-slate-700">Senha</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-12 py-2.5 focus:outline-none focus:ring-2 focus:bg-white transition-all font-medium placeholder:text-slate-400 text-xs"
-                  style={{ '--tw-ring-color': '#1d4ed8' } as React.CSSProperties}
-                  onFocus={e => e.currentTarget.style.borderColor = '#1d4ed8'}
-                  onBlur={e => e.currentTarget.style.borderColor = ''}
-                  placeholder="sua senha"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  id="toggle-password"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-teal-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember me + Forgot */}
-            <div className="flex items-center justify-between pt-1">
-              <label
-                className="flex items-center space-x-2 cursor-pointer group"
-                onClick={() => setRememberMe(!rememberMe)}
-              >
-                <div
-                  className="w-5 h-5 border-2 rounded flex items-center justify-center transition-all"
-                  style={{
-                    background: rememberMe ? '#2563eb' : 'white',
-                    borderColor: rememberMe ? '#2563eb' : '#cbd5e1',
-                  }}
-                >
-                  <Check className={`w-3.5 h-3.5 text-white transition-opacity ${rememberMe ? 'opacity-100' : 'opacity-0'}`} />
-                </div>
-                <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-800 transition-colors">
-                  Lembrar-me
-                </span>
-              </label>
-              <button
-                type="button"
-                onClick={() => navigate('/forgot-password')}
-                className="text-sm font-bold transition-colors hover:underline"
-                style={{ color: '#2563eb' }}
-              >
-                Esqueceu a senha?
-              </button>
-            </div>
-
-            <button
-              id="btn-login"
-              type="submit"
-              disabled={loading}
-              className="w-full text-white font-bold py-3 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 mt-1 flex items-center justify-center disabled:opacity-70 disabled:transform-none text-xs"
-              style={{
-                background: loading
-                  ? '#1d4ed8'
-                  : 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
-                boxShadow: '0 4px 20px rgba(37, 99, 235, 0.35)',
-              }}
-              onMouseEnter={e => {
-                if (!loading) (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 28px rgba(37, 99, 235, 0.5)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(37, 99, 235, 0.35)';
-              }}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin mr-2 h-5 w-5" />
-                  Autenticando...
-                </>
-              ) : 'Entrar'}
-            </button>
-          </form>
-
-          {/* ── Seção de Cadastro ──────────────────────────────────────── */}
-          <div className="mt-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex-1 h-px bg-slate-100" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Novo no Owner Health?</span>
-              <div className="flex-1 h-px bg-slate-100" />
-            </div>
-
-            <div className="space-y-2.5">
-              {registerOptions.map((opt) => {
-                const Icon = opt.icon;
-                return (
+              {/* Senha */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                    SENHA
+                  </label>
                   <button
-                    key={opt.id}
-                    id={opt.id}
-                    onClick={() => navigate(opt.path)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50 hover:bg-white transition-all group text-left"
+                    type="button"
+                    onClick={() => navigate('/forgot-password')}
+                    className="text-xs font-semibold text-blue-500 hover:text-blue-400 transition-colors"
                   >
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-                      style={{ background: opt.bg }}
-                    >
-                      <Icon className="w-5 h-5" style={{ color: opt.color }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">{opt.label}</p>
-                      <p className="text-xs text-slate-400 font-medium truncate">{opt.desc}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    Esqueceu a senha?
                   </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col items-center text-center">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Desenvolvido por</p>
-            <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-all cursor-default bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-              <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
-                <HeartPulse className="w-3 h-3 text-white" />
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
+                    <Lock className="h-5 w-5" />
+                  </div>
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-[#11192e] border border-slate-800 text-slate-100 rounded-xl pl-11 pr-11 py-3.5 text-sm placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium"
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    id="toggle-password"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
-              <span className="text-xs font-black text-slate-700 uppercase tracking-tight">Owner Health</span>
+
+              {/* Checkbox Manter sessão */}
+              <div className="flex items-center justify-between pt-1">
+                <label
+                  className="flex items-center space-x-3 cursor-pointer group select-none"
+                  onClick={() => setRememberMe(!rememberMe)}
+                >
+                  <div
+                    className={`w-5 h-5 border rounded-md flex items-center justify-center transition-all ${rememberMe
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-[#11192e] border-slate-800 group-hover:border-slate-700'
+                      }`}
+                  >
+                    <Check className={`w-3.5 h-3.5 stroke-[3] transition-opacity ${rememberMe ? 'opacity-100' : 'opacity-0'}`} />
+                  </div>
+                  <span className="text-sm font-medium text-slate-300 group-hover:text-slate-200 transition-colors">
+                    Manter sessão iniciada
+                  </span>
+                </label>
+              </div>
+
+              {/* Botão Entrar na plataforma */}
+              <button
+                id="btn-login"
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition-all transform active:scale-[0.99] disabled:opacity-60 disabled:transform-none text-sm flex items-center justify-center cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2.5 h-5 w-5 text-white" />
+                    Entrando...
+                  </>
+                ) : (
+                  'Entrar na plataforma'
+                )}
+              </button>
+            </form>
+
+            {/* Cadastro / Solicitação de Acesso */}
+            <div className="pt-2 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-slate-800/80" />
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                  Novo no Owner Health?
+                </span>
+                <div className="flex-1 h-px bg-slate-800/80" />
+              </div>
+
+              <div className="space-y-2.5">
+                {registerOptions.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      id={opt.id}
+                      onClick={() => navigate(opt.path)}
+                      className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl border border-slate-800/80 bg-[#11192e] hover:bg-[#16203a] hover:border-slate-700 transition-all group cursor-pointer text-left"
+                    >
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+                        style={{ background: opt.bg }}
+                      >
+                        <Icon className="w-5 h-5" style={{ color: opt.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
+                          {opt.label}
+                        </p>
+                        <p className="text-xs text-slate-400 font-normal truncate">{opt.desc}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
           </div>
         </div>
+
       </div>
     </div>
   );

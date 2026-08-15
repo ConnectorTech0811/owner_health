@@ -107,17 +107,18 @@ export const RegisterCompany: React.FC = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-[2rem] shadow-2xl p-10 max-w-md w-full text-center">
-          <div className="w-20 h-20 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-6">
-            <CheckSquare className="w-10 h-10 text-violet-500" />
+      <div className="min-h-screen bg-[#070c19] flex items-center justify-center p-4 relative overflow-hidden font-sans bg-login-grid">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="bg-[#0b1120] border border-slate-800/80 rounded-[2rem] shadow-2xl p-10 max-w-md w-full text-center relative z-10 text-slate-100">
+          <div className="w-20 h-20 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-6">
+            <CheckSquare className="w-10 h-10 text-violet-400" />
           </div>
-          <h2 className="text-2xl font-black text-slate-800 mb-3">Cadastro Enviado!</h2>
-          <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+          <h2 className="text-2xl font-black text-white mb-3">Cadastro Enviado!</h2>
+          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
             Seu cadastro corporativo foi enviado com sucesso. Após validação, você receberá as credenciais de acesso.
           </p>
           <button onClick={() => navigate('/login')}
-            className="w-full py-3 rounded-xl font-bold text-white text-sm"
+            className="w-full py-3.5 rounded-xl font-bold text-white text-sm shadow-lg shadow-violet-600/30 hover:bg-violet-500 transition-all cursor-pointer"
             style={{ background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }}>
             Voltar ao Login
           </button>
@@ -127,22 +128,25 @@ export const RegisterCompany: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 md:p-8">
-      <div className="max-w-2xl w-full bg-white rounded-[2rem] shadow-2xl overflow-hidden">
+    <div className="min-h-screen bg-[#070c19] flex items-center justify-center p-4 md:p-8 relative overflow-hidden font-sans bg-login-grid text-slate-100">
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="max-w-2xl w-full bg-[#0b1120] border border-slate-800/80 rounded-[2rem] shadow-2xl overflow-hidden relative z-10 text-slate-100">
 
         {/* Header */}
-        <div className="px-8 pt-8 pb-6 border-b border-slate-100">
-          <button onClick={() => navigate('/login')} className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition mb-5">
+        <div className="px-8 pt-8 pb-6 border-b border-slate-800/80">
+          <button onClick={() => navigate('/login')} className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-200 transition mb-5 cursor-pointer">
             <ArrowLeft className="w-4 h-4" /> Voltar ao login
           </button>
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg"
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-purple-600/20"
               style={{ background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }}>
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-800">Cadastro de Hospital / Clínica</h1>
-              <p className="text-sm text-slate-500 font-medium">Gerencie profissionais e planos atendidos</p>
+              <h1 className="text-2xl font-black text-white">Cadastro de Hospital / Clínica</h1>
+              <p className="text-sm text-slate-400 font-medium">Gerencie profissionais e planos atendidos</p>
             </div>
           </div>
 
@@ -153,14 +157,14 @@ export const RegisterCompany: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all"
                     style={{
-                      background: i <= step ? 'linear-gradient(135deg, #7c3aed, #8b5cf6)' : '#f1f5f9',
-                      color: i <= step ? 'white' : '#94a3b8',
+                      background: i <= step ? 'linear-gradient(135deg, #7c3aed, #8b5cf6)' : '#1e293b',
+                      color: i <= step ? 'white' : '#64748b',
                     }}>
                     {i < step ? '✓' : i + 1}
                   </div>
-                  <span className={`text-xs font-bold hidden sm:block ${i === step ? 'text-violet-600' : 'text-slate-400'}`}>{label}</span>
+                  <span className={`text-xs font-bold hidden sm:block ${i === step ? 'text-violet-400' : 'text-slate-500'}`}>{label}</span>
                 </div>
-                {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 rounded-full ${i < step ? 'bg-violet-400' : 'bg-slate-100'}`} />}
+                {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 rounded-full ${i < step ? 'bg-violet-500' : 'bg-slate-800'}`} />}
               </React.Fragment>
             ))}
           </div>
@@ -169,7 +173,7 @@ export const RegisterCompany: React.FC = () => {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-8 space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-semibold flex gap-2">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm font-semibold flex gap-2">
               <span>⚠️</span><span>{error}</span>
             </div>
           )}
@@ -190,15 +194,15 @@ export const RegisterCompany: React.FC = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">CEP *</label>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">CEP *</label>
                   <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
                       {cepLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
                     </div>
                     <input value={form.cep}
                       onChange={e => handleCepChange(e.target.value)}
                       onBlur={() => fetchCep()} placeholder="00000-000" maxLength={9}
-                      className={`w-full border ${form.cep ? (form.logradouro ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : error.includes('CEP') ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-slate-50') : 'border-slate-200 bg-slate-50'} rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition`} />
+                      className={`w-full border ${form.cep ? (form.logradouro ? 'border-emerald-500/60 bg-emerald-950/20 text-emerald-200' : error.includes('CEP') ? 'border-red-500/60 bg-red-950/20 text-red-200' : 'border-slate-800 bg-[#11192e] text-slate-100') : 'border-slate-800 bg-[#11192e] text-slate-100'} rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition placeholder:text-slate-600`} />
                   </div>
                 </div>
                 <div className="md:col-span-2">
@@ -245,15 +249,15 @@ export const RegisterCompany: React.FC = () => {
                   {form.cpf_responsavel && (
                     <div className="mt-1.5 text-[11px] font-bold">
                       {form.cpf_responsavel.replace(/\D/g, '').length < 11 ? (
-                        <span className="text-amber-600 flex items-center gap-1">
+                        <span className="text-amber-400 flex items-center gap-1">
                           ⚠️ Digite os 11 números do CPF ({form.cpf_responsavel.replace(/\D/g, '').length}/11)
                         </span>
                       ) : isValidCPF(form.cpf_responsavel) ? (
-                        <span className="text-emerald-600 flex items-center gap-1">
+                        <span className="text-emerald-400 flex items-center gap-1">
                           ✓ CPF Válido
                         </span>
                       ) : (
-                        <span className="text-red-600 flex items-center gap-1">
+                        <span className="text-red-400 flex items-center gap-1">
                           ✖ CPF Inválido (número não reconhecido)
                         </span>
                       )}
@@ -274,46 +278,46 @@ export const RegisterCompany: React.FC = () => {
           {/* ── Step 2: Acesso & Segurança ── */}
           {step === 2 && (
             <div className="space-y-4">
-              <div className="bg-violet-50 border border-violet-100 rounded-xl p-4 flex items-start gap-3">
-                <Shield className="w-5 h-5 text-violet-600 mt-0.5 shrink-0" />
-                <p className="text-xs text-violet-700 font-medium leading-relaxed">
-                  Seu login será o e-mail corporativo informado anteriormente: <strong>{form.email}</strong>. Defina uma senha segura abaixo.
+              <div className="bg-violet-950/40 border border-violet-800/50 rounded-xl p-4 flex items-start gap-3">
+                <Shield className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-violet-300 font-medium leading-relaxed">
+                  Seu login será o e-mail corporativo informado anteriormente: <strong className="text-white">{form.email}</strong>. Defina uma senha segura abaixo.
                 </p>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Senha *</label>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">Senha *</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input type={showPassword ? 'text' : 'password'} value={form.senha}
                     onChange={e => sf('senha', e.target.value)} placeholder="Mínimo 6 caracteres"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-12 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition" />
+                    className="w-full bg-[#11192e] border border-slate-800 rounded-xl pl-11 pr-12 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition text-slate-100 placeholder:text-slate-600" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Confirmar Senha *</label>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">Confirmar Senha *</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input type="password" value={form.confirmar_senha}
                     onChange={e => sf('confirmar_senha', e.target.value)} placeholder="Repita a senha"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition" />
+                    className="w-full bg-[#11192e] border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-base md:text-sm font-medium focus:outline-none focus:border-violet-500 transition text-slate-100 placeholder:text-slate-600" />
                 </div>
               </div>
 
               {/* LGPD */}
               <div className="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all"
-                style={{ borderColor: form.acceptLGPD ? '#7c3aed' : '#e2e8f0', background: form.acceptLGPD ? '#f5f3ff' : '#f8fafc' }}
+                style={{ borderColor: form.acceptLGPD ? '#7c3aed' : '#1e293b', background: form.acceptLGPD ? 'rgba(124, 58, 237, 0.1)' : '#11192e' }}
                 onClick={() => sf('acceptLGPD', !form.acceptLGPD)}>
                 <div className="w-5 h-5 border-2 rounded flex items-center justify-center shrink-0 mt-0.5 transition-all"
-                  style={{ background: form.acceptLGPD ? '#7c3aed' : 'white', borderColor: form.acceptLGPD ? '#7c3aed' : '#cbd5e1' }}>
+                  style={{ background: form.acceptLGPD ? '#7c3aed' : '#11192e', borderColor: form.acceptLGPD ? '#7c3aed' : '#475569' }}>
                   {form.acceptLGPD && <span className="text-white text-[10px] font-black">✓</span>}
                 </div>
-                <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                  Li e aceito os <span className="font-bold text-violet-600">Termos de Uso</span> e a{' '}
-                  <span className="font-bold text-violet-600">Política de Privacidade (LGPD)</span> da plataforma Owner Health.
+                <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                  Li e aceito os <span className="font-bold text-violet-400">Termos de Uso</span> e a{' '}
+                  <span className="font-bold text-violet-400">Política de Privacidade (LGPD)</span> da plataforma Owner Health.
                   Autorizo o tratamento dos dados da instituição conforme descrito.
                 </p>
               </div>
@@ -324,19 +328,19 @@ export const RegisterCompany: React.FC = () => {
           <div className="flex gap-3 pt-2">
             {step > 0 && (
               <button type="button" onClick={() => setStep(s => s - 1)}
-                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 transition cursor-pointer">
                 Voltar
               </button>
             )}
             {step < STEPS.length - 1 ? (
               <button type="button" onClick={handleNext}
-                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition"
+                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition cursor-pointer shadow-lg shadow-violet-600/30"
                 style={{ background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }}>
                 Próximo →
               </button>
             ) : (
               <button type="submit" disabled={loading}
-                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-violet-600/30"
                 style={{ background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }}>
                 {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Cadastrando...</> : 'Finalizar Cadastro'}
               </button>
@@ -356,13 +360,13 @@ interface FProps {
   color?: string;
 }
 const F: React.FC<FProps> = ({ label, id, value, onChange, placeholder, type = 'text', icon, color = 'blue', colSpan, isValid = null }) => {
-  const borderColor = isValid === true ? 'border-emerald-500 bg-emerald-50 text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500' : isValid === false ? 'border-red-500 bg-red-50 text-red-900 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 bg-slate-50 focus:border-violet-500 focus:ring-violet-500/10';
+  const borderColor = isValid === true ? 'border-emerald-500/60 bg-emerald-950/20 text-emerald-200 focus:ring-emerald-500/20 focus:border-emerald-500' : isValid === false ? 'border-red-500/60 bg-red-950/20 text-red-200 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-800 bg-[#11192e] text-slate-100 placeholder:text-slate-600 focus:border-violet-500 focus:ring-violet-500/10';
   const borderFocus = color === 'violet' ? 'focus:border-violet-500 focus:ring-violet-500/10' : 'focus:border-blue-500 focus:ring-blue-500/10';
   return (
     <div className={colSpan ? 'md:col-span-2' : ''}>
-      <label htmlFor={id} className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>
+      <label htmlFor={id} className="block text-xs font-bold text-slate-300 mb-1.5">{label}</label>
       <div className="relative">
-        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
+        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">{icon}</div>}
         <input id={id} type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
           className={`w-full border ${borderColor} rounded-xl ${icon ? 'pl-11' : 'pl-4'} pr-4 py-3 text-base md:text-sm font-medium focus:outline-none ${borderFocus} focus:ring-2 transition`} />
       </div>
