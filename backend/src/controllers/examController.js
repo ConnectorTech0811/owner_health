@@ -152,8 +152,20 @@ const shareExam = async (req, res) => {
 
     const token = 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
     const criadoEm = new Date();
-    const dur = duracao || 'Permanente';
-    const expiraEm = null; // Exames compartilhados ficam permanentes no histórico do médico
+    const dur = duracao || '24h';
+    let expiraEm = null;
+
+    if (dur === 'permanent' || dur === 'Permanente') {
+      expiraEm = null;
+    } else if (dur.endsWith('d') || dur.includes('dia')) {
+      const days = parseInt(dur.replace(/[^0-9]/g, '')) || 7;
+      expiraEm = new Date(criadoEm.getTime() + days * 24 * 60 * 60 * 1000);
+    } else {
+      const hours = parseInt(dur.replace(/[^0-9]/g, '')) || 24;
+      if (hours > 0) {
+        expiraEm = new Date(criadoEm.getTime() + hours * 60 * 60 * 1000);
+      }
+    }
 
     const record = {
       token,
@@ -225,10 +237,6 @@ const getSharedExamByToken = async (req, res) => {
     const { token } = req.params;
     if (!token) return res.status(400).json({ error: 'Token é obrigatório' });
 
-    if (!req.user) {
-      return res.status(401).json({ error: 'Acesso não autorizado. Por favor, faça login para acessar este exame compartilhado.' });
-    }
-
     let share = null;
     try {
       if (!isNaN(token)) {
@@ -246,6 +254,58 @@ const getSharedExamByToken = async (req, res) => {
       return res.status(404).json({ error: 'Link de exame compartilhado não encontrado ou inválido.' });
     }
 
+    // Se NÃO estiver logado no sistema (req.user indisponível -> acesso público anônimo via link)
+    if (!req.user) {
+      // Checar se o link expirou para o acesso público
+      if (share.expira_em) {
+        const expDate = new Date(share.expira_em);
+        if (!isNaN(expDate.getTime()) && new Date() > expDate) {
+          return res.status(410).json({
+            error: 'Este link de compartilhamento temporário expirou.',
+            expired: true,
+            expira_em: share.expira_em
+          });
+        }
+      }
+
+      let exam = null;
+      try {
+        exam = await db('exames').where({ id: share.exame_id }).first();
+      } catch {
+        const exams = await dbHelper.query('exames', 'select', { id: share.exame_id });
+        exam = exams ? exams[0] : null;
+      }
+
+      let pacienteNome = share.paciente_nome;
+      if (!pacienteNome || pacienteNome === 'Paciente') {
+        try {
+          const client = await db('clientes').where({ id: share.cliente_id }).first();
+          if (client) pacienteNome = client.nome;
+        } catch {}
+      }
+
+      return res.json({
+        token: share.token,
+        paciente_nome: pacienteNome || 'Paciente',
+        exame_id: share.exame_id,
+        medico_nome: share.medico_nome,
+        duracao: share.duracao,
+        visualizado: share.visualizado ? 1 : 0,
+        visualizado_em: share.visualizado_em,
+        criado_em: share.criado_em,
+        expira_em: share.expira_em,
+        is_public: true,
+        exame: exam || {
+          id: share.exame_id,
+          tipo: 'Exame Compartilhado',
+          data: share.criado_em,
+          laboratorio: 'Laboratório Central',
+          observacoes: 'Exame acessado via link seguro.'
+        }
+      });
+    }
+
+    // Caso o usuário ESTEJA LOGADO (Médico / Paciente / Admin interno)
     const user = req.user || {};
     const userEmail = (user.email || '').toLowerCase().trim();
     const userName = (user.nome || '').toLowerCase().trim();

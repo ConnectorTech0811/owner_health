@@ -109,6 +109,7 @@ startxref
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [selectedProfId, setSelectedProfId] = useState('');
   const [shareDuration, setShareDuration] = useState('24h');
+  const [customHours, setCustomHours] = useState('6');
   const [generatedShareLink, setGeneratedShareLink] = useState('');
   const [sharingSuccess, setSharingSuccess] = useState(false);
 
@@ -326,6 +327,17 @@ startxref
       return;
     }
     const profName = professionals.find(p => String(p.id) === String(selectedProfId))?.nome || 'Profissional';
+    const effectiveDuration = shareDuration === 'custom' ? `${Math.max(1, parseInt(customHours) || 1)}h` : shareDuration;
+
+    let durationLabel = effectiveDuration;
+    if (shareDuration === '1h') durationLabel = '1 Hora';
+    else if (shareDuration === '6h') durationLabel = '6 Horas';
+    else if (shareDuration === '12h') durationLabel = '12 Horas';
+    else if (shareDuration === '24h') durationLabel = '24 Horas';
+    else if (shareDuration === '48h') durationLabel = '48 Horas';
+    else if (shareDuration === '7d') durationLabel = '7 Dias';
+    else if (shareDuration === 'permanent') durationLabel = 'Permanente';
+    else if (shareDuration === 'custom') durationLabel = `${customHours || 1} Horas`;
 
     try {
       const res = await fetch(`${API_URL}/api/exams/share`, {
@@ -343,7 +355,7 @@ startxref
           cliente_id: clienteId,
           medico_id: selectedProfId,
           medico_nome: profName,
-          duracao: shareDuration
+          duracao: effectiveDuration
         })
       });
 
@@ -376,7 +388,7 @@ startxref
         examId: showShareModal?.id || 1,
         examTipo: showShareModal?.tipo || 'Exame',
         profNome: profName,
-        duration: shareDuration === '24h' ? '24 Horas' : shareDuration === '48h' ? '48 Horas' : shareDuration === '7d' ? '7 Dias' : 'Permanente',
+        duration: durationLabel,
         criadoEm: new Date().toLocaleDateString('pt-BR'),
         link: shareUrl
       };
@@ -402,7 +414,7 @@ startxref
         examId: showShareModal?.id || 1,
         examTipo: showShareModal?.tipo || 'Exame',
         profNome: profName,
-        duration: shareDuration === '24h' ? '24 Horas' : shareDuration === '48h' ? '48 Horas' : shareDuration === '7d' ? '7 Dias' : 'Permanente',
+        duration: durationLabel,
         criadoEm: new Date().toLocaleDateString('pt-BR'),
         link: shareUrl
       };
@@ -1018,12 +1030,34 @@ startxref
                     onChange={e => setShareDuration(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition"
                   >
+                    <option value="1h">1 Hora</option>
+                    <option value="6h">6 Horas</option>
+                    <option value="12h">12 Horas</option>
                     <option value="24h">24 Horas</option>
                     <option value="48h">48 Horas</option>
                     <option value="7d">7 Dias</option>
+                    <option value="custom">Personalizado (digitar horas...)</option>
                     <option value="permanent">Permanente</option>
                   </select>
                 </div>
+
+                {shareDuration === 'custom' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5">Definir Validade em Horas</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="8760"
+                        value={customHours}
+                        onChange={e => setCustomHours(e.target.value)}
+                        placeholder="Ex: 3"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500 transition"
+                      />
+                      <span className="text-xs font-bold text-slate-500 shrink-0">Horas</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-3">
                   <button onClick={() => setShowShareModal(null)} className="flex-1 py-3 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">Cancelar</button>

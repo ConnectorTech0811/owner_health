@@ -64,8 +64,21 @@ import { ProfessionalMyPlan } from './pages/Professional/ProfessionalMyPlan';
 import { AuditLogs } from './pages/Admin/AuditLogs';
 import { AdminSettings } from './pages/Admin/AdminSettings';
 import { SharedExams } from './pages/SharedExams';
+import { PublicExamView } from './pages/PublicExamView';
 
 const SystemSharedExams = () => {
+  const authToken = localStorage.getItem('token');
+  const searchParams = new URLSearchParams(window.location.search);
+  const hasTokenParam = searchParams.has('token');
+
+  // Se for acesso externo sem estar logado no sistema
+  if (!authToken) {
+    if (hasTokenParam) {
+      return <PublicExamView />;
+    }
+    return <Navigate to="/login" replace />;
+  }
+
   const userRaw = localStorage.getItem('user');
   const user = userRaw ? JSON.parse(userRaw) : {};
   const activeRole = localStorage.getItem('activeRole') || user.tipo_usuario || user.roles?.[0] || 'client';
@@ -115,17 +128,12 @@ function App() {
         <Route path="/register/company" element={<RegisterCompany />} />
         <Route path="/register/professional" element={<RegisterProfessional />} />
 
-        {/* Rota Protegida de Exames Compartilhados Integrada no Layout do Sistema */}
-        <Route path="/exames-compartilhados" element={
-          <PrivateRoute redirectTo="/login">
-            <SystemSharedExams />
-          </PrivateRoute>
-        } />
-        <Route path="/view/exam/*" element={
-          <PrivateRoute redirectTo="/login">
-            <SystemSharedExams />
-          </PrivateRoute>
-        } />
+        {/* Rotas Públicas de Exame Compartilhado (Sem necessidade de login) */}
+        <Route path="/share/:token" element={<PublicExamView />} />
+        <Route path="/shared-exam/:token" element={<PublicExamView />} />
+        <Route path="/exame/publico/:token" element={<PublicExamView />} />
+        <Route path="/exames-compartilhados" element={<SystemSharedExams />} />
+        <Route path="/view/exam/*" element={<SystemSharedExams />} />
 
         {/* Portal de Clientes (Públicas e Protegidas) */}
         <Route path="/client/login" element={<ClientLogin />} />

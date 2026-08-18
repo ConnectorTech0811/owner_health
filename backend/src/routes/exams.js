@@ -12,7 +12,7 @@ const {
   removeSharedExamForDoctor,
   bulkRemoveSharedExamsForDoctor
 } = require('../controllers/examController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
 
 // Rotas de Exames Gerais
 router.get('/client/:cliente_id', getExams);
@@ -24,7 +24,8 @@ router.delete('/:id', deleteExam);
 router.post('/share', authenticateToken, shareExam);
 router.post('/share-bulk/delete', authenticateToken, bulkRemoveSharedExamsForDoctor);
 router.get('/shared-list', authenticateToken, listSharedExams);
-router.get('/share/:token', authenticateToken, getSharedExamByToken);
+router.get('/share/:token', optionalAuthenticateToken, getSharedExamByToken);
+router.get('/public-share/:token', optionalAuthenticateToken, getSharedExamByToken);
 router.put('/share/:token/read', authenticateToken, markSharedExamAsRead);
 router.delete('/share/:token', authenticateToken, removeSharedExamForDoctor);
 

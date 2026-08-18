@@ -26,4 +26,26 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-module.exports = { authenticateToken };
+const optionalAuthenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'owner_health_secret');
+      req.user = decoded;
+      
+      const store = getContext();
+      if (store) {
+        store.set('user', decoded);
+      }
+    } catch (err) {
+      // Ignora erro de token inválido para requisições anônimas
+    }
+  }
+
+  next();
+};
+
+module.exports = { authenticateToken, optionalAuthenticateToken };
+
