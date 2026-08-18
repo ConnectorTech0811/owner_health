@@ -69,6 +69,13 @@ const getProfessionals = async (req, res) => {
         }
       }
     } else if (isClientUser && req.user.id) {
+      // Filtrar apenas profissionais que são médicos/atendentes de saúde e estão ativos
+      professionals = professionals.filter(p => {
+        const isDoc = !p.tipo_profissional || p.tipo_profissional === 'medico' || p.tipo_profissional === 'nutricionista' || p.tipo_profissional === 'psicologo' || p.tipo_profissional === 'fisioterapeuta';
+        const isActive = p.ativo !== 0 && p.status !== 'inativo' && p.status !== 'suspenso';
+        return isDoc && isActive;
+      });
+
       // Resolver os cliente_ids deste usuário e quais clínicas (empresas) ele pertence
       const clienteRecords = await db('clientes').where({ usuario_id: req.user.id }).select('id');
       const clienteIds = clienteRecords.map(c => c.id);
@@ -92,31 +99,29 @@ const getProfessionals = async (req, res) => {
         doctorEmpresaMap.get(rel.profissional_id).add(rel.empresa_id);
       });
 
-      // Filtrar a lista de médicos:
-      // Permite o médico se ele não pertencer a nenhuma clínica OU se pertencer a pelo menos 1 clínica autorizada para o paciente.
-      professionals = professionals.filter(p => {
-        const empSet = doctorEmpresaMap.get(p.id);
-        const pEmpresaId = p.empresa_id;
+      // Se o paciente está restrito a clínicas específicas, aplica o filtro de clínicas
+      if (allowedEmpresaIds.size > 0) {
+        professionals = professionals.filter(p => {
+          const empSet = doctorEmpresaMap.get(p.id);
+          const pEmpresaId = p.empresa_id;
 
-        // Se o médico não está vinculado a nenhuma clínica (médico autônomo), ele é público
-        if ((!empSet || empSet.size === 0) && !pEmpresaId) {
-          return true;
-        }
-
-        // Se o médico é de clínica, verificar se o paciente pertence a essa clínica
-        if (pEmpresaId && allowedEmpresaIds.has(pEmpresaId)) {
-          return true;
-        }
-
-        if (empSet) {
-          for (const eId of empSet) {
-            if (allowedEmpresaIds.has(eId)) return true;
+          if ((!empSet || empSet.size === 0) && !pEmpresaId) {
+            return true;
           }
-        }
 
-        // Caso o paciente não esteja cadastrado na clínica deste médico, bloqueia a visualização
-        return false;
-      });
+          if (pEmpresaId && allowedEmpresaIds.has(pEmpresaId)) {
+            return true;
+          }
+
+          if (empSet) {
+            for (const eId of empSet) {
+              if (allowedEmpresaIds.has(eId)) return true;
+            }
+          }
+
+          return false;
+        });
+      }
     }
 
     professionals.forEach(p => {
