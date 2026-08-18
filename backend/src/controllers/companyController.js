@@ -421,30 +421,57 @@ const getCompanyDocuments = async (req, res) => {
     const profs = profIds.length > 0 ? await db('profissionais').whereIn('id', profIds).select('id', 'nome', 'numero_conselho') : [];
     const profMap = new Map(profs.map(p => [p.id, p]));
 
-    // Resolvendo os nomes dos pacientes baseados no paciente_cpf
-    const cleanCpf = (cpf) => cpf ? String(cpf).replace(/\D/g, '') : '';
-    const cpfs = Array.from(new Set(docs.map(d => cleanCpf(d.paciente_cpf)).filter(Boolean)));
+    // Resolvendo os clientes completos da base
+    const allClients = await db('clientes').select('*').catch(() => []);
     
-    let clients = [];
-    try {
-      clients = cpfs.length > 0 ? await db('clientes').whereIn('cpf', cpfs).select('id', 'nome', 'cpf') : [];
-    } catch {
-      // Fallback em memória
-      const dbHelper = require('../utils/dbHelper');
-      clients = cpfs.length > 0 ? await dbHelper.query('clientes', 'select') : [];
-    }
+    // Mapeador por CPF limpo (apenas dígitos) e ID
+    const cleanDigits = (str) => str ? String(str).replace(/\D/g, '') : '';
+    const clientCpfMap = new Map();
+    const clientIdMap = new Map();
 
-    const clientMap = new Map();
-    clients.forEach(c => {
-      clientMap.set(cleanCpf(c.cpf), c);
+    allClients.forEach(c => {
+      if (c.cpf) clientCpfMap.set(cleanDigits(c.cpf), c);
+      if (c.id) clientIdMap.set(String(c.id), c);
     });
 
-    const result = docs.map(d => ({
-      ...d,
-      paciente_nome: clientMap.get(cleanCpf(d.paciente_cpf))?.nome || 'Paciente não cadastrado',
-      medico_nome: profMap.get(d.profissional_id)?.nome || 'Médico Credenciado',
-      medico_crm: profMap.get(d.profissional_id)?.numero_conselho || 'CRM/UF'
-    }));
+    // Mapear titulares se houver dependentes
+    const titularIds = Array.from(new Set(allClients.map(c => c.titular_id).filter(Boolean)));
+    const titulares = titularIds.length > 0 ? await db('clientes').whereIn('id', titularIds).select('id', 'nome') : [];
+    const titularMap = new Map(titulares.map(t => [t.id, t.nome]));
+
+    const result = docs.map(d => {
+      const rawCpf = d.paciente_cpf || '';
+      const cleaned = cleanDigits(rawCpf);
+
+      let foundClient = clientCpfMap.get(cleaned) || clientIdMap.get(rawCpf);
+      if (!foundClient && d.cliente_id) {
+        foundClient = clientIdMap.get(String(d.cliente_id));
+      }
+
+      const pacienteNome = d.paciente_nome || (foundClient ? foundClient.nome : null) || 'Paciente Cadastrado';
+      const pacienteCpfFormatado = foundClient?.cpf || rawCpf || 'Não informado';
+
+      let isDependente = false;
+      let titularNome = null;
+      if (foundClient) {
+        if (foundClient.titular_id) {
+          isDependente = true;
+          titularNome = titularMap.get(foundClient.titular_id) || 'Titular do Plano';
+        } else if (foundClient.eh_dependente) {
+          isDependente = true;
+        }
+      }
+
+      return {
+        ...d,
+        paciente_nome: pacienteNome,
+        paciente_cpf: pacienteCpfFormatado,
+        eh_dependente: isDependente,
+        titular_nome: titularNome,
+        medico_nome: profMap.get(d.profissional_id)?.nome || 'Médico Credenciado',
+        medico_crm: profMap.get(d.profissional_id)?.numero_conselho || 'CRM/UF'
+      };
+    });
 
     return res.json(result);
   } catch (err) {

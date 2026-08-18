@@ -32,6 +32,8 @@ export const ClientExams: React.FC = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchDate, setSearchDate] = useState('');
+  const [filterSpecialty, setFilterSpecialty] = useState('');
+  const [modalDoctorSpec, setModalDoctorSpec] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [viewingFile, setViewingFile] = useState<{url: string, type: string} | null>(null);
 
@@ -726,16 +728,30 @@ startxref
             placeholder="Buscar por nome do exame, laboratório, médico ou observação..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition shadow-sm font-medium"
           />
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
         </div>
-        <div className="w-full sm:w-48">
+        
+        <div className="w-full sm:w-56">
+          <select
+            value={filterSpecialty}
+            onChange={e => setFilterSpecialty(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 transition shadow-sm"
+          >
+            <option value="">Todas as Especialidades</option>
+            {EXAM_TYPES.map(spec => (
+              <option key={spec} value={spec}>{spec}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-full sm:w-44">
           <input
             type="date"
             value={searchDate}
             onChange={e => setSearchDate(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition shadow-sm text-slate-500"
+            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-500 focus:outline-none focus:border-blue-500 transition shadow-sm"
             title="Filtrar por data"
           />
         </div>
@@ -764,8 +780,9 @@ startxref
                    (exam.laboratorio && exam.laboratorio.toLowerCase().includes(searchLower)) ||
                    (exam.medico_solicitante && exam.medico_solicitante.toLowerCase().includes(searchLower)) ||
                    (exam.observacoes && exam.observacoes.toLowerCase().includes(searchLower));
+            const specMatch = !filterSpecialty || exam.tipo.toLowerCase().includes(filterSpecialty.toLowerCase()) || (exam.medico_solicitante && exam.medico_solicitante.toLowerCase().includes(filterSpecialty.toLowerCase()));
             const dateMatch = searchDate ? exam.data.startsWith(searchDate) : true;
-            return textMatch && dateMatch;
+            return textMatch && specMatch && dateMatch;
           }).map(exam => {
             const hasGlucoseAlert = exam.tipo === 'Glicemia em Jejum' || (exam.observacoes && exam.observacoes.includes('110 mg/dL'));
             
@@ -1010,14 +1027,32 @@ startxref
                 </p>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Médico / Profissional de Saúde</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Filtrar Médicos por Especialidade</label>
+                  <select
+                    value={modalDoctorSpec}
+                    onChange={e => { setModalDoctorSpec(e.target.value); setSelectedProfId(''); }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-blue-500 transition"
+                  >
+                    <option value="">Todas as Especialidades</option>
+                    {EXAM_TYPES.map(spec => (
+                      <option key={spec} value={spec}>{spec}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Médico / Profissional de Saúde *</label>
                   <select
                     value={selectedProfId}
                     onChange={e => setSelectedProfId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-blue-500 transition"
                   >
                     <option value="">Selecione um médico...</option>
-                    {professionals.map(p => (
+                    {professionals.filter(p => {
+                      if (!modalDoctorSpec) return true;
+                      const spec = (p as any).especialidade || '';
+                      return spec.toLowerCase().includes(modalDoctorSpec.toLowerCase());
+                    }).map(p => (
                       <option key={p.id} value={p.id}>{p.nome}</option>
                     ))}
                   </select>

@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Plus, Trash2, User, XCircle, Calendar as CalendarIcon, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Plus, Trash2, User, XCircle, Calendar as CalendarIcon, Lock, CheckCircle2 } from 'lucide-react';
 
 interface AgendaSlot {
   id: number;
   data: string;
   hora_inicio: string;
   hora_fim: string;
-  status: 'livre' | 'agendado' | 'cancelado';
+  status: 'livre' | 'agendado' | 'cancelado' | 'concluido';
   paciente_nome?: string;
   cliente_id?: number;
   criado_por: number;
@@ -25,6 +25,7 @@ interface CalendarProps {
   onDeleteSlot: (id: number) => void;
   onBookSlot: (id: number) => void;
   onCancelBooking: (id: number) => void;
+  onCompleteSlot?: (id: number) => void;
   onDeleteDaySlots?: (dateStr: string) => void;
   isSecretary?: boolean;
 }
@@ -35,12 +36,17 @@ export function AgendaCalendar({
   onDeleteSlot,
   onBookSlot,
   onCancelBooking,
+  onCompleteSlot,
   onDeleteDaySlots,
   isSecretary = false,
 }: CalendarProps) {
   const [viewMode, setViewMode] = useState<'semana' | 'mes'>(isSecretary ? 'mes' : 'semana');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const userRaw = localStorage.getItem('user');
+  const user = userRaw ? JSON.parse(userRaw) : null;
+  const isDoctor = user?.tipo_profissional === 'medico';
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -295,6 +301,19 @@ export function AgendaCalendar({
                         ) : (
                           slotInHour.map(slot => {
                             const isBooked = slot.status === 'agendado';
+                            const now = new Date();
+                            const todayIso = now.toLocaleDateString('en-CA');
+                            const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                            const slotDate = slot.data ? String(slot.data).substring(0, 10) : dateStr;
+                            const isOverdue = isBooked && (slotDate < todayIso || (slotDate === todayIso && (slot.hora_inicio || '').substring(0, 5) < currentTime));
+
+                            let bgClass = 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100';
+                            if (isBooked) {
+                              bgClass = isOverdue
+                                ? 'bg-amber-500 text-white border-amber-600 shadow-amber-100 hover:bg-amber-600'
+                                : 'bg-indigo-600 text-white border-indigo-700 shadow-indigo-200 hover:bg-indigo-700';
+                            }
+
                             return (
                               <div
                                 key={slot.id}
@@ -302,23 +321,34 @@ export function AgendaCalendar({
                                   e.stopPropagation();
                                   setSelectedDate(dateStr);
                                 }}
-                                className={`p-1.5 rounded-lg border text-[11px] leading-tight cursor-pointer transition-all shadow-sm ${
-                                  isBooked
-                                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-indigo-200 hover:bg-indigo-700'
-                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                                }`}
+                                className={`p-1.5 rounded-lg border text-[11px] leading-tight cursor-pointer transition-all shadow-sm ${bgClass}`}
                               >
                                 <div className="font-bold flex items-center justify-between">
                                   <span>{slot.hora_inicio.substring(0, 5)}</span>
                                   {isBooked ? (
-                                    <span className="bg-white/20 text-[9px] px-1 py-0.2 rounded font-semibold">Consulta agendada</span>
+                                    isOverdue ? (
+                                      <span className="bg-amber-700/80 text-white text-[9px] px-1 py-0.2 rounded font-bold">🟠 Pendente</span>
+                                    ) : (
+                                      <span className="bg-white/20 text-[9px] px-1 py-0.2 rounded font-semibold">Agendada</span>
+                                    )
                                   ) : (
                                     <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-100 px-1 rounded">Livre</span>
                                   )}
                                 </div>
                                 {isBooked && slot.paciente_nome && (
-                                  <div className="mt-1 font-semibold truncate text-[10px] opacity-95">
-                                    👤 {slot.paciente_nome}
+                                  <div className="mt-1 font-semibold truncate text-[10px]">
+                                    {slot.cliente_id ? (
+                                      <a
+                                        href={`/professional/patients/${slot.cliente_id}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="hover:underline text-white font-extrabold flex items-center gap-0.5"
+                                        title="Abrir prontuário completo do paciente"
+                                      >
+                                        👤 {slot.paciente_nome} 📋
+                                      </a>
+                                    ) : (
+                                      <span className="opacity-95">👤 {slot.paciente_nome}</span>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -467,21 +497,45 @@ export function AgendaCalendar({
                     ) : (
                       <div className="mt-2">
                         {slot.paciente_nome && (
-                          <div className="flex items-center gap-1.5 text-slate-700 text-sm mb-2 bg-white/70 p-1.5 rounded-lg border border-indigo-100">
-                            <User size={14} className="text-indigo-400" />
+                          <div className="flex items-center gap-1.5 text-slate-700 text-sm mb-2 bg-indigo-50/80 p-2 rounded-xl border border-indigo-100 shadow-xs">
+                            <User size={15} className="text-indigo-600" />
                             {slot.cliente_id ? (
-                              <a href={`/professional/patients/${slot.cliente_id}`} className="font-semibold truncate text-indigo-600 hover:text-indigo-800 hover:underline transition">
-                                {slot.paciente_nome}
+                              <a
+                                href={`/professional/patients/${slot.cliente_id}`}
+                                className="font-extrabold truncate text-indigo-700 hover:text-indigo-900 hover:underline transition flex items-center gap-1.5"
+                                title="Abrir prontuário completo do paciente"
+                              >
+                                <span>{slot.paciente_nome}</span>
+                                <span className="text-[10px] bg-indigo-200 text-indigo-800 px-1.5 py-0.2 rounded font-black">Prontuário 📋</span>
                               </a>
                             ) : (
-                              <span className="font-semibold truncate">{slot.paciente_nome}</span>
+                              <span className="font-bold truncate">{slot.paciente_nome}</span>
                             )}
                           </div>
                         )}
-                        <div className="flex items-center justify-between mt-2">
-                           <span className="text-xs font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">Consulta agendada</span>
-                           <button onClick={() => onCancelBooking(slot.id)} className="text-xs flex items-center gap-1 font-medium text-red-600 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors"><XCircle size={14}/> Desmarcar</button>
-                        </div>
+                        
+                        {(slot.status === 'concluido' || (slot as any).status === 'Concluída') ? (
+                          <div className="mt-2 bg-purple-50 border border-purple-200 text-purple-900 p-2 rounded-xl text-xs font-bold flex items-center justify-between">
+                            <span className="flex items-center gap-1"><CheckCircle2 size={14} className="text-purple-600" /> Consulta Concluída</span>
+                            <span className="text-[10px] bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full font-black uppercase">Validado ✓</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 mt-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">Consulta agendada</span>
+                              <button onClick={() => onCancelBooking(slot.id)} className="text-xs flex items-center gap-1 font-medium text-red-600 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors"><XCircle size={14}/> Desmarcar</button>
+                            </div>
+
+                            {onCompleteSlot && !isDoctor && (
+                              <button
+                                onClick={() => onCompleteSlot(slot.id)}
+                                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <CheckCircle2 size={15} /> Confirmar Consulta Concluída
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

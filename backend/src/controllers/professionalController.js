@@ -5,27 +5,128 @@ const { sendFirstAccessEmail } = require('../utils/mailer');
 const getProfessionals = async (req, res) => {
   const { companyId } = req.query;
   try {
+    const db = require('../../knexfile');
+
     if (companyId) {
       // Listar profissionais vinculados a uma empresa específica
-      const relations = await dbHelper.query('profissional_empresas', 'select', { empresa_id: parseInt(companyId) });
-      const professionals = [];
-      for (const rel of relations) {
-        const profs = await dbHelper.query('profissionais', 'select', { id: rel.profissional_id });
-        if (profs.length > 0) {
-          professionals.push(profs[0]);
-        }
-      }
+      const relations = await db('profissional_empresas').where({ empresa_id: parseInt(companyId) }).select();
+      const profIds = relations.map(r => r.profissional_id);
+      const professionals = profIds.length > 0 ? await db('profissionais').whereIn('id', profIds) : [];
       return res.json(professionals);
     }
     
-    const professionals = await dbHelper.query('profissionais', 'select');
+    let professionals = await db('profissionais').select('*');
+
+    const userRoles = Array.isArray(req.user?.roles) ? req.user.roles : [req.user?.tipo_usuario].filter(Boolean);
+    const isStaffOrDoctor = req.user && (
+      userRoles.includes('professional') ||
+      userRoles.includes('company') ||
+      userRoles.includes('admin') ||
+      req.user.tipo_usuario === 'professional' ||
+      req.user.tipo_usuario === 'company' ||
+      req.user.tipo_usuario === 'admin' ||
+      req.user.tipo_profissional ||
+      req.user.empresa_id ||
+      req.user.eh_empresa ||
+      req.user.eh_profissional
+    );
+
+    const isClientUser = req.user && (
+      userRoles.includes('client') ||
+      userRoles.includes('dependent') ||
+      req.user.tipo_usuario === 'client'
+    ) && !isStaffOrDoctor;
+
+    if (isStaffOrDoctor) {
+      let staffEmpresaId = req.user.empresa_id;
+
+      if (!staffEmpresaId && req.user.id) {
+        const profRecord = await db('profissionais')
+          .where({ usuario_id: req.user.id })
+          .orWhere({ email: req.user.email })
+          .first();
+
+        if (profRecord) {
+          if (profRecord.empresa_id) {
+            staffEmpresaId = profRecord.empresa_id;
+          } else {
+            const rel = await db('profissional_empresas')
+              .where({ profissional_id: profRecord.id })
+              .first();
+            if (rel) staffEmpresaId = rel.empresa_id;
+          }
+        }
+      }
+
+      if (staffEmpresaId) {
+        const empId = parseInt(staffEmpresaId);
+        const relations = await db('profissional_empresas').where({ empresa_id: empId }).select('profissional_id').catch(() => []);
+        const profIds = new Set(relations.map(r => r.profissional_id));
+        
+        const filteredForStaff = professionals.filter(p => p.empresa_id === empId || profIds.has(p.id));
+        if (filteredForStaff.length > 0) {
+          professionals = filteredForStaff;
+        }
+      }
+    } else if (isClientUser && req.user.id) {
+      // Resolver os cliente_ids deste usuário e quais clínicas (empresas) ele pertence
+      const clienteRecords = await db('clientes').where({ usuario_id: req.user.id }).select('id');
+      const clienteIds = clienteRecords.map(c => c.id);
+
+      let allowedEmpresaIds = new Set();
+      if (clienteIds.length > 0) {
+        const hasRelTable = await db.schema.hasTable('cliente_empresas');
+        if (hasRelTable) {
+          const rels = await db('cliente_empresas').whereIn('cliente_id', clienteIds).select('empresa_id');
+          rels.forEach(r => allowedEmpresaIds.add(r.empresa_id));
+        }
+      }
+
+      // Mapear médicos a suas empresas
+      const profEmpRels = await db('profissional_empresas').select('*').catch(() => []);
+      const doctorEmpresaMap = new Map();
+      profEmpRels.forEach(rel => {
+        if (!doctorEmpresaMap.has(rel.profissional_id)) {
+          doctorEmpresaMap.set(rel.profissional_id, new Set());
+        }
+        doctorEmpresaMap.get(rel.profissional_id).add(rel.empresa_id);
+      });
+
+      // Filtrar a lista de médicos:
+      // Permite o médico se ele não pertencer a nenhuma clínica OU se pertencer a pelo menos 1 clínica autorizada para o paciente.
+      professionals = professionals.filter(p => {
+        const empSet = doctorEmpresaMap.get(p.id);
+        const pEmpresaId = p.empresa_id;
+
+        // Se o médico não está vinculado a nenhuma clínica (médico autônomo), ele é público
+        if ((!empSet || empSet.size === 0) && !pEmpresaId) {
+          return true;
+        }
+
+        // Se o médico é de clínica, verificar se o paciente pertence a essa clínica
+        if (pEmpresaId && allowedEmpresaIds.has(pEmpresaId)) {
+          return true;
+        }
+
+        if (empSet) {
+          for (const eId of empSet) {
+            if (allowedEmpresaIds.has(eId)) return true;
+          }
+        }
+
+        // Caso o paciente não esteja cadastrado na clínica deste médico, bloqueia a visualização
+        return false;
+      });
+    }
+
     professionals.forEach(p => {
-      if (p.nome && p.nome.toLowerCase().includes('médico 01') || p.nome.toLowerCase().includes('medico 01')) {
+      if (p.nome && (p.nome.toLowerCase().includes('médico 01') || p.nome.toLowerCase().includes('medico 01'))) {
         p.especialidade = 'Cardiologia';
       }
     });
     return res.json(professionals);
   } catch (err) {
+    console.error('Erro em getProfessionals:', err);
     return res.status(500).json({ error: 'Erro ao listar profissionais' });
   }
 };

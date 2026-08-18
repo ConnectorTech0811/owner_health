@@ -198,6 +198,7 @@ function App() {
                 <Route path="/dashboard" element={<ProfDashboard />} />
                 <Route path="/scheduling" element={<ProfScheduling />} />
                 <Route path="/patients" element={<ProfPatients />} />
+                <Route path="/patients/:id" element={<ProfPatients />} />
                 <Route path="/prescriptions" element={<ProfPrescriptions />} />
                 <Route path="/shared-exams" element={<SharedExams />} />
                 <Route path="/team" element={<ProfTeam />} />

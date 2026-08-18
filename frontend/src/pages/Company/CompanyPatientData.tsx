@@ -3,7 +3,7 @@ import {
   Search, FlaskConical, Pill, Scale, FileText,
   ShieldAlert, ShieldCheck, Download, Calendar, Users, Plus, ArrowLeft,
   Trash2, UserMinus, UserCheck, AlertTriangle, ChevronLeft, ChevronRight,
-  Filter, XCircle, List, LayoutGrid, Eye, X
+  Filter, XCircle, List, LayoutGrid, Eye, X, MessageSquare, Loader2, Check
 } from 'lucide-react';
 import { API_URL } from '../../config';
 import { PatientRegistrationModal } from '../../components/PatientRegistrationModal';
@@ -66,6 +66,18 @@ export const CompanyPatientData: React.FC = () => {
   const [granting, setGranting] = useState(false);
   const [grantSuccessMsg, setGrantSuccessMsg] = useState('');
 
+  // Estado para a aba de Histórico & Observações Médicas
+  const [observationsData, setObservationsData] = useState<{
+    observations: any[];
+    pode_adicionar: boolean;
+    doctor_id: number | null;
+    doctor_nome: string | null;
+    doctor_especialidade: string | null;
+  }>({ observations: [], pode_adicionar: false, doctor_id: null, doctor_nome: null, doctor_especialidade: null });
+
+  const [newObsText, setNewObsText] = useState('');
+  const [savingObs, setSavingObs] = useState(false);
+
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const companyId = user.empresa_id || user.id;
@@ -126,9 +138,18 @@ export const CompanyPatientData: React.FC = () => {
     }, 5000);
 
     const params = new URLSearchParams(window.location.search);
-    const cpfParam = params.get('cpf') || params.get('query');
-    if (cpfParam) {
-      loadPatientByCpf(cpfParam);
+    let targetParam = params.get('cpf') || params.get('query') || params.get('id') || params.get('cliente_id');
+    
+    if (!targetParam) {
+      const pathParts = window.location.pathname.split('/');
+      const lastPart = pathParts[pathParts.length - 1];
+      if (lastPart && lastPart !== 'patients' && !isNaN(Number(lastPart))) {
+        targetParam = lastPart;
+      }
+    }
+
+    if (targetParam) {
+      loadPatientByCpf(targetParam);
     }
 
     return () => clearInterval(interval);
@@ -231,6 +252,45 @@ export const CompanyPatientData: React.FC = () => {
     }
   };
 
+  const fetchObservations = async (clienteId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/api/clients/${clienteId}/observations`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) setObservationsData(data);
+    } catch (e) {
+      console.error('Erro ao carregar observações:', e);
+    }
+  };
+
+  const handleSaveObservation = async () => {
+    if (!newObsText.trim() || !patientData?.patient?.id) return;
+    setSavingObs(true);
+    try {
+      const res = await fetch(`${API_URL}/api/clients/${patientData.patient.id}/observations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ observacao: newObsText.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewObsText('');
+        fetchObservations(patientData.patient.id);
+        alert('Observação médica registrada com sucesso!');
+      } else {
+        alert(data.error || 'Erro ao registrar observação.');
+      }
+    } catch (e: any) {
+      alert('Erro ao conectar com o servidor.');
+    } finally {
+      setSavingObs(false);
+    }
+  };
+
   const loadPatientByCpf = async (cpf: string) => {
     setError('');
     setPatientData(null);
@@ -241,6 +301,9 @@ export const CompanyPatientData: React.FC = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao carregar prontuário.');
       setPatientData(data);
+      if (data?.patient?.id) {
+        fetchObservations(data.patient.id);
+      }
     } catch (err: any) {
       setError(err.message);
     }
@@ -1169,7 +1232,8 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
                   { id: 'anamnesis', label: 'Anamnese', icon: FileText },
                   { id: 'exams', label: 'Exames', icon: FlaskConical },
                   { id: 'prescriptions', label: 'Receitas', icon: Pill },
-                  { id: 'bioimpedance', label: 'Bioimpedância', icon: Scale }
+                  { id: 'bioimpedance', label: 'Bioimpedância', icon: Scale },
+                  { id: 'observations', label: 'Histórico & Observações', icon: MessageSquare }
                 ].map(tab => {
                   const Icon = tab.icon;
                   return (
@@ -1486,6 +1550,109 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
                         </table>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* TAB 5: HISTÓRICO & OBSERVAÇÕES MÉDICAS */}
+                {activeTab === 'observations' && (
+                  <div className="space-y-6 animate-fadeIn font-sans">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                      <div>
+                        <h4 className="text-base font-black text-slate-800 flex items-center gap-2">
+                          <MessageSquare className="w-5 h-5 text-indigo-600" />
+                          <span>Histórico & Observações Médicas</span>
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Anotações clínicas e acompanhamento de evolução do paciente
+                        </p>
+                      </div>
+
+                      <span className="text-[10px] bg-purple-50 text-purple-800 border border-purple-200 px-3 py-1 rounded-full font-extrabold self-start sm:self-auto">
+                        🔒 Acesso Exclusivo Médico
+                      </span>
+                    </div>
+
+                    {/* FORMULÁRIO DE NOVA OBSERVAÇÃO OU AVISO DE BLOQUEIO */}
+                    {observationsData.pode_adicionar ? (
+                      <div className="bg-slate-50 border border-indigo-100 p-4 sm:p-5 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                            <Plus className="w-4 h-4 text-indigo-600" /> Registrar Nova Observação Clínica
+                          </label>
+                          {observationsData.doctor_nome && (
+                            <span className="text-[10px] font-bold text-slate-400">
+                              Dr(a). {observationsData.doctor_nome} ({observationsData.doctor_especialidade})
+                            </span>
+                          )}
+                        </div>
+
+                        <textarea
+                          rows={3}
+                          value={newObsText}
+                          onChange={e => setNewObsText(e.target.value)}
+                          placeholder="Escreva as observações médicas, recomendações ou impressões clínicas sobre o paciente..."
+                          className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-indigo-500 transition"
+                        />
+
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+                          <p className="text-[10px] text-slate-400 font-semibold italic">
+                            * O registro ficará assinado com seu nome, especialidade, data e hora atual.
+                          </p>
+                          <button
+                            onClick={handleSaveObservation}
+                            disabled={savingObs || !newObsText.trim()}
+                            className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            {savingObs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            <span>{savingObs ? 'Salvando...' : 'Salvar Observação'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 text-amber-900">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-xs font-black">Adição de Observações Bloqueada</p>
+                          <p className="text-xs font-semibold leading-relaxed opacity-95">
+                            É necessário possuir ao menos <b>1 consulta concluída</b> com este paciente para registrar novas observações clínicas. Você pode visualizar o histórico de notas anteriores abaixo.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* LISTA DE OBSERVAÇÕES ANTERIORES */}
+                    <div className="space-y-3 pt-2">
+                      <h5 className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                        Registros de Observações ({observationsData.observations?.length || 0})
+                      </h5>
+
+                      {(!observationsData.observations || observationsData.observations.length === 0) ? (
+                        <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-slate-400">
+                          <MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                          <p className="text-xs font-bold text-slate-500">Nenhuma observação clínica registrada até o momento.</p>
+                        </div>
+                      ) : (
+                        observationsData.observations.map(obs => (
+                          <div key={obs.id} className="bg-white border border-slate-200/90 rounded-2xl p-4 space-y-2.5 shadow-xs hover:border-indigo-200 transition">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-100 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-xs text-slate-900">Dr(a). {obs.medico_nome}</span>
+                                <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-indigo-100">
+                                  {obs.medico_especialidade || 'Médico'}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-400">
+                                {formatDatePtBr(obs.criado_em)} às {obs.criado_em ? obs.criado_em.substring(11, 16) : ''}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-700 leading-relaxed font-semibold whitespace-pre-wrap">
+                              {obs.observacao}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 )}
 

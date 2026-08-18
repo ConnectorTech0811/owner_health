@@ -381,6 +381,133 @@ const deleteClient = async (req, res) => {
   }
 };
 
+// Garantir tabela de observações médicas
+const ensureObservationsTable = async (db) => {
+  const hasTable = await db.schema.hasTable('paciente_observacoes_medicas');
+  if (!hasTable) {
+    await db.schema.createTable('paciente_observacoes_medicas', table => {
+      table.increments('id').primary();
+      table.integer('cliente_id').notNullable();
+      table.integer('medico_id').notNullable();
+      table.string('medico_nome').notNullable();
+      table.string('medico_especialidade');
+      table.text('observacao').notNullable();
+      table.timestamp('criado_em').defaultTo(db.fn.now());
+    });
+  }
+};
+
+const getPatientObservations = async (req, res) => {
+  const { id: cliente_id } = req.params;
+  try {
+    const db = require('../../knexfile');
+    await ensureObservationsTable(db);
+
+    const targetClienteId = parseInt(cliente_id);
+
+    // Buscar observações já registradas
+    const observations = await db('paciente_observacoes_medicas')
+      .where({ cliente_id: targetClienteId })
+      .orderBy('criado_em', 'desc')
+      .select();
+
+    // Resolver médico logado
+    let doctor = null;
+    if (req.user) {
+      if (req.user.id) doctor = await db('profissionais').where({ usuario_id: req.user.id }).first();
+      if (!doctor && req.user.email) doctor = await db('profissionais').where({ email: req.user.email }).first();
+      if (!doctor && req.user.profissional_id) doctor = await db('profissionais').where({ id: req.user.profissional_id }).first();
+    }
+
+    let podeAdicionar = false;
+    if (doctor) {
+      // Verificar se há pelo menos 1 consulta concluída entre este médico e o paciente
+      const consultaConcluida = await db('agendas')
+        .where({
+          cliente_id: targetClienteId,
+          profissional_id: doctor.id
+        })
+        .whereIn('status', ['concluido', 'Concluída'])
+        .first();
+
+      if (consultaConcluida) {
+        podeAdicionar = true;
+      }
+    }
+
+    return res.json({
+      observations,
+      pode_adicionar: podeAdicionar,
+      doctor_id: doctor ? doctor.id : null,
+      doctor_nome: doctor ? doctor.nome : null,
+      doctor_especialidade: doctor ? (doctor.especialidade || 'Médico') : null
+    });
+  } catch (err) {
+    console.error('Erro em getPatientObservations:', err);
+    return res.status(500).json({ error: 'Erro ao buscar observações do paciente.' });
+  }
+};
+
+const createPatientObservation = async (req, res) => {
+  const { id: cliente_id } = req.params;
+  const { observacao } = req.body;
+
+  if (!observacao || !observacao.trim()) {
+    return res.status(400).json({ error: 'Informe o conteúdo da observação.' });
+  }
+
+  try {
+    const db = require('../../knexfile');
+    await ensureObservationsTable(db);
+
+    const targetClienteId = parseInt(cliente_id);
+
+    // Resolver médico logado
+    let doctor = null;
+    if (req.user) {
+      if (req.user.id) doctor = await db('profissionais').where({ usuario_id: req.user.id }).first();
+      if (!doctor && req.user.email) doctor = await db('profissionais').where({ email: req.user.email }).first();
+      if (!doctor && req.user.profissional_id) doctor = await db('profissionais').where({ id: req.user.profissional_id }).first();
+    }
+
+    if (!doctor) {
+      return res.status(403).json({ error: 'Somente profissionais médicos credenciados podem registrar observações.' });
+    }
+
+    // Validação de segurança: Verificar consulta concluída
+    const consultaConcluida = await db('agendas')
+      .where({
+        cliente_id: targetClienteId,
+        profissional_id: doctor.id
+      })
+      .whereIn('status', ['concluido', 'Concluída'])
+      .first();
+
+    if (!consultaConcluida) {
+      return res.status(403).json({
+        error: 'Inclusão bloqueada: É necessário possuir ao menos 1 consulta concluída com este paciente para registrar novas observações clínicas.'
+      });
+    }
+
+    const [insertedId] = await db('paciente_observacoes_medicas').insert({
+      cliente_id: targetClienteId,
+      medico_id: doctor.id,
+      medico_nome: doctor.nome,
+      medico_especialidade: doctor.especialidade || 'Médico',
+      observacao: observacao.trim(),
+      criado_em: new Date().toISOString()
+    });
+
+    return res.status(201).json({
+      message: 'Observação médica registrada com sucesso!',
+      id: insertedId
+    });
+  } catch (err) {
+    console.error('Erro em createPatientObservation:', err);
+    return res.status(500).json({ error: 'Erro ao registrar observação médica.' });
+  }
+};
+
 module.exports = {
   getClients,
   getClientById,
@@ -388,5 +515,7 @@ module.exports = {
   updateClient,
   toggleClientStatus,
   updateClientPayment,
-  deleteClient
+  deleteClient,
+  getPatientObservations,
+  createPatientObservation
 };

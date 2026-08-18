@@ -1,16 +1,20 @@
 const nodemailer = require('nodemailer');
 
-const createTransporter = () =>
-  nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
+const createTransporter = () => {
+  const user = process.env.SMTP_USER || 'suporte.sistemas@connectortech.com.br';
+  const pass = process.env.SMTP_PASS || 'hswwogfqyqhpaxda';
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || '465');
+  const isSecure = process.env.SMTP_SECURE === 'ssl' || port === 465;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: isSecure,
+    auth: { user, pass },
     tls: { rejectUnauthorized: false }
   });
+};
 
 /**
  * Envia e-mail de primeiro acesso com credenciais temporárias.
@@ -91,4 +95,83 @@ const sendFirstAccessEmail = async ({ to, nome, email, senha, perfil = 'Usuário
   }
 };
 
-module.exports = { sendFirstAccessEmail };
+const sendAppointmentTokenEmail = async ({ to, pacienteNome, medicoNome, dataFormatada, horaStr, tokenConfirmacao }) => {
+  if (!to) return;
+  const sysUrl = process.env.SYSTEM_URL || process.env.FRONTEND_URL || 'https://owner-health-ktsf.vercel.app';
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: `Owner Health <${process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@ownerhealth.com.br'}>`,
+    to,
+    subject: `🔑 Código de Validação de Consulta (${tokenConfirmacao}) – Owner Health`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 24px;">
+        <div style="background: linear-gradient(135deg, #4f46e5, #3730a3); border-radius: 16px; padding: 28px; text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #ffffff; font-size: 24px; margin: 0;">Owner Health</h1>
+          <p style="color: #e0e7ff; font-size: 13px; margin: 6px 0 0;">Confirmação e Validação de Atendimento</p>
+        </div>
+
+        <div style="background: #ffffff; border-radius: 16px; padding: 28px; border: 1px solid #e2e8f0;">
+          <p style="font-size: 15px; color: #1e293b; margin-top: 0;">Olá, <strong>${pacienteNome}</strong>!</p>
+          <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+            Sua consulta com <strong>${medicoNome}</strong> agendada para <strong>${dataFormatada} às ${horaStr}</strong> precisa ser confirmada.
+          </p>
+
+          <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0; border: 2px dashed #6366f1;">
+            <p style="font-size: 11px; font-weight: bold; color: #6b7280; text-transform: uppercase; margin: 0 0 8px;">CÓDIGO DE CONFIRMAÇÃO DO PACIENTE</p>
+            <span style="font-size: 28px; font-weight: 900; color: #4338ca; letter-spacing: 3px; font-family: monospace;">${tokenConfirmacao}</span>
+          </div>
+
+          <p style="font-size: 13px; color: #64748b; line-height: 1.6; text-align: center;">
+            Por favor, passe este código para a secretária ou médico no momento da consulta para que seu atendimento seja concluído no sistema.
+          </p>
+        </div>
+
+        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin-top: 16px;">
+          Owner Health Systems &bull; <a href="${sysUrl}" style="color: #4f46e5;">${sysUrl}</a>
+        </p>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✉️ E-mail de token de consulta enviado para: ${to}`);
+  } catch (err) {
+    console.warn(`⚠️ Falha ao enviar e-mail de token para ${to}:`, err.message);
+  }
+};
+
+const sendAppointmentTokenWhatsApp = async ({ to, pacienteNome, medicoNome, dataFormatada, horaStr, tokenConfirmacao }) => {
+  if (!to) return;
+  const cleanPhone = String(to).replace(/\D/g, '');
+  const messageText = `🔑 *Owner Health - Código de Validação de Atendimento*\n\nOlá *${pacienteNome}*! Para confirmar sua consulta com *${medicoNome}* em *${dataFormatada} às ${horaStr}*, forneça este código de confirmação para a secretária:\n\n👉 *${tokenConfirmacao}*\n\nhttps://owner-health-ktsf.vercel.app`;
+
+  try {
+    const waUrl = process.env.WHATSAPP_API_URL || process.env.EVOLUTION_API_URL;
+    const waToken = process.env.WHATSAPP_API_TOKEN || process.env.EVOLUTION_API_KEY;
+
+    if (waUrl && waToken) {
+      await fetch(waUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': waToken,
+          'Authorization': `Bearer ${waToken}`
+        },
+        body: JSON.stringify({
+          number: cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`,
+          text: messageText,
+          message: messageText
+        })
+      });
+      console.log(`💬 WhatsApp oficial enviado com sucesso para ${cleanPhone}`);
+    } else {
+      console.log(`💬 [WhatsApp Envoy] Mensagem simulada enviada para ${cleanPhone}:\n"${messageText}"`);
+    }
+  } catch (err) {
+    console.warn(`⚠️ Falha no envio de WhatsApp para ${cleanPhone}:`, err.message);
+  }
+};
+
+module.exports = { sendFirstAccessEmail, sendAppointmentTokenEmail, sendAppointmentTokenWhatsApp };

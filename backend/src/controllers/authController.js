@@ -104,6 +104,16 @@ const authenticate = async (req, res) => {
       return res.status(401).json({ error: 'E-mail ou senha incorretos' });
     }
 
+    // Validação rigorosa de conta inativa/suspensa
+    const { checkUserIsActive } = require('../middleware/auth');
+    const isActive = await checkUserIsActive({ id: user.id, email: user.email });
+    if (!isActive) {
+      return res.status(403).json({
+        error: 'Sua conta está inativa ou suspensa. Entre em contato com a administração para restabelecer o acesso ao sistema.',
+        code: 'USER_INACTIVE'
+      });
+    }
+
     // Coleta todas as roles ativas e VERIFICADAS para esse usuário
     const roles = [];
     if (user.eh_admin) roles.push('admin');

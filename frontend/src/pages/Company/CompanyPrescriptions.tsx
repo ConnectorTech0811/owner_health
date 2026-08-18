@@ -1382,9 +1382,16 @@ export const CompanyPrescriptions: React.FC = () => {
                               </span>
                             </div>
 
-                            <p className="text-xs font-black text-slate-900">
-                              Paciente: {doc.paciente_nome || doc.paciente_cpf} {doc.paciente_cpf ? `(CPF: ${doc.paciente_cpf})` : ''}
-                            </p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-xs font-black text-slate-900">
+                                Paciente: {doc.paciente_nome && doc.paciente_nome !== 'Paciente não cadastrado' ? doc.paciente_nome : (doc.paciente_cpf || 'Paciente Cadastrado')} {doc.paciente_cpf ? `(CPF: ${doc.paciente_cpf})` : ''}
+                              </p>
+                              {doc.eh_dependente && (
+                                <span className="text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full">
+                                  👨‍👩‍👧 Dependente {doc.titular_nome ? `(Titular: ${doc.titular_nome})` : ''}
+                                </span>
+                              )}
+                            </div>
                             
                             {/* Exibição dos Remédios Prescritos */}
                             {itemsDisplay.length > 0 && (

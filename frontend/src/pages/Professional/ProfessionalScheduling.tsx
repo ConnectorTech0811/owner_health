@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Plus, CheckCircle2, RefreshCcw, Lock, Unlock, AlertCircle, Users, ArrowLeft, Search } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, CheckCircle2, RefreshCcw, Lock, Unlock, AlertCircle, Users, ArrowLeft, Search, X, ShieldCheck, Loader2 } from 'lucide-react';
 import { AgendaCalendar } from '../../components/AgendaCalendar';
 import { API_URL } from '../../config';
 
@@ -27,6 +27,22 @@ export function ProfessionalScheduling() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [tokenModal, setTokenModal] = useState<{
+    agendaId: number;
+    loading: boolean;
+    validating: boolean;
+    paciente: any;
+    inputToken: string;
+    error: string | null;
+  } | null>(null);
+  const [agendaTab, setAgendaTab] = useState<'calendar' | 'history'>('calendar');
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState('all');
+  const [historyPage, setHistoryPage] = useState(1);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [historySearch, historyStatusFilter]);
 
   // Perfil e Seleção de Médico
   const userRaw = localStorage.getItem('user');
@@ -357,6 +373,80 @@ export function ProfessionalScheduling() {
     }
   };
 
+  const handleCompleteSlot = async (id: number) => {
+    setTokenModal({
+      agendaId: id,
+      loading: true,
+      validating: false,
+      paciente: null,
+      inputToken: '',
+      error: null
+    });
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/agendas/${id}/request-token`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTokenModal({
+          agendaId: id,
+          loading: false,
+          validating: false,
+          paciente: data.paciente,
+          inputToken: '',
+          error: null
+        });
+      } else {
+        alert(data.error || 'Erro ao enviar código de validação para o paciente.');
+        setTokenModal(null);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erro ao conectar com o servidor.');
+      setTokenModal(null);
+    }
+  };
+
+  const handleConfirmTokenValidation = async () => {
+    if (!tokenModal || !tokenModal.inputToken.trim()) {
+      setTokenModal(prev => prev ? { ...prev, error: 'Por favor, digite o Token informado pelo paciente.' } : null);
+      return;
+    }
+
+    setTokenModal(prev => prev ? { ...prev, validating: true, error: null } : null);
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/agendas/${tokenModal.agendaId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ token: tokenModal.inputToken })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert('✅ Atendimento validado e concluído com sucesso com o token do paciente!');
+        setTokenModal(null);
+        fetchData();
+      } else {
+        setTokenModal(prev => prev ? {
+          ...prev,
+          validating: false,
+          error: data.error || 'Token incorreto. Solicite o código correto ao paciente.'
+        } : null);
+      }
+    } catch (e) {
+      console.error(e);
+      setTokenModal(prev => prev ? { ...prev, validating: false, error: 'Erro ao conectar ao servidor.' } : null);
+    }
+  };
+
   const toggleMonthLock = async (mes: number, ano: number, bloqueioExistente?: Bloqueio) => {
     try {
       const token = localStorage.getItem('token');
@@ -599,38 +689,335 @@ export function ProfessionalScheduling() {
         <p className="text-slate-500">Configure horários de atendimento, disponibilidades e bloqueios mensais.</p>
       </div>
 
-      {/* CARD 1 (PRIMEIRO CARD): AGENDA */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-            <CalendarIcon size={24} />
+      {/* CARD 1 (PRIMEIRO CARD): AGENDA E HISTÓRICO */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+              <CalendarIcon size={24} />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800">
+                {isSecretary
+                  ? (selectedDoctor ? `Agenda do Médico - ${selectedDoctor.nome}` : 'Agenda do Médico')
+                  : 'Minha agenda profissional'}
+              </h2>
+              <p className="text-sm text-slate-500">
+                {isSecretary ? 'Acompanhe a disponibilidade e marcações do médico' : 'Acompanhe sua disponibilidade e histórico de atendimentos'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800">
-              {isSecretary
-                ? (selectedDoctor ? `Agenda do Médico - ${selectedDoctor.nome}` : 'Agenda do Médico')
-                : 'Minha agenda'}
-            </h2>
-            <p className="text-sm text-slate-500">
-              {isSecretary ? 'Acompanhe a disponibilidade e marcações do médico' : 'Acompanhe sua disponibilidade e marcações'}
-            </p>
+
+          {/* Abas de Navegação */}
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 shrink-0">
+            <button
+              onClick={() => setAgendaTab('calendar')}
+              className={`px-4 py-2 text-xs font-extrabold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                agendaTab === 'calendar' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <CalendarIcon size={14} /> Agenda Ativa
+            </button>
+
+            <button
+              onClick={() => setAgendaTab('history')}
+              className={`px-4 py-2 text-xs font-extrabold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                agendaTab === 'history' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Users size={14} /> Histórico de Consultas
+            </button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-10 text-slate-400">Carregando agenda...</div>
-        ) : (
-          <AgendaCalendar 
-            agendas={agendas} 
-            bloqueios={bloqueios} 
-            onDeleteSlot={handleDelete}
-            onBookSlot={handleBookPatient}
-            onCancelBooking={handleCancelBooking}
-            onDeleteDaySlots={handleDeleteDaySlots}
-            isSecretary={isSecretary}
-          />
+        {/* CONTEÚDO DA ABA 1: AGENDA (CALENDÁRIO) */}
+        {agendaTab === 'calendar' && (
+          loading ? (
+            <div className="text-center py-10 text-slate-400">Carregando agenda...</div>
+          ) : (
+            <AgendaCalendar 
+              agendas={agendas} 
+              bloqueios={bloqueios} 
+              onDeleteSlot={handleDelete}
+              onBookSlot={handleBookPatient}
+              onCancelBooking={handleCancelBooking}
+              onCompleteSlot={handleCompleteSlot}
+              onDeleteDaySlots={handleDeleteDaySlots}
+              isSecretary={isSecretary}
+            />
+          )
+        )}
+
+        {/* CONTEÚDO DA ABA 2: HISTÓRICO DE CONSULTAS */}
+        {agendaTab === 'history' && (
+          <div className="space-y-4 animate-fadeIn">
+            {/* Filtros do Histórico */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Buscar histórico por nome do paciente..."
+                  value={historySearch}
+                  onChange={e => setHistorySearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <span className="text-xs font-bold text-slate-500 shrink-0">Filtrar por Status:</span>
+                <select
+                  value={historyStatusFilter}
+                  onChange={e => setHistoryStatusFilter(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                >
+                  <option value="all">Todas as Consultas</option>
+                  <option value="concluido">🟢 Concluídas</option>
+                  <option value="pendente">🟠 Pendentes / Não Concluídas</option>
+                  <option value="agendado">🔵 Agendadas Futuras</option>
+                  <option value="cancelado">🔴 Canceladas</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tabela do Histórico */}
+            {(() => {
+              const filtered = agendas.filter((a: any) => {
+                if (a.status === 'livre' && !a.paciente_nome) return false;
+                if (historySearch.trim()) {
+                  const q = historySearch.toLowerCase();
+                  if (!(a.paciente_nome || '').toLowerCase().includes(q)) return false;
+                }
+
+                if (historyStatusFilter === 'concluido') return a.status === 'concluido' || a.status === 'Concluída';
+                if (historyStatusFilter === 'cancelado') return a.status === 'cancelado';
+                if (historyStatusFilter === 'agendado') return a.status === 'agendado';
+                if (historyStatusFilter === 'pendente') {
+                  const now = new Date();
+                  const todayIso = now.toLocaleDateString('en-CA');
+                  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                  const rawDate = a.data ? String(a.data).substring(0, 10) : '';
+                  return a.status === 'agendado' && (rawDate < todayIso || (rawDate === todayIso && (a.hora_inicio || '').substring(0, 5) < currentTime));
+                }
+                return true;
+              });
+
+              const historyPageSize = 10;
+              const totalHistoryPages = Math.ceil(filtered.length / historyPageSize) || 1;
+              const safeHistoryPage = Math.min(Math.max(historyPage, 1), totalHistoryPages);
+              const paginatedHistory = filtered.slice((safeHistoryPage - 1) * historyPageSize, safeHistoryPage * historyPageSize);
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-500">Nenhuma consulta encontrada no histórico.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200">
+                        <tr>
+                          <th className="p-3">Data & Hora</th>
+                          <th className="p-3">Paciente</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3">Token Validação</th>
+                          <th className="p-3 text-right">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                        {paginatedHistory.map((a: any) => {
+                          const rawDate = a.data ? String(a.data).substring(0, 10) : '';
+                          const [y, m, d] = rawDate.split('-');
+                          const ptBrDate = d && m && y ? `${d}/${m}/${y}` : rawDate;
+
+                          const isConcluido = a.status === 'concluido' || a.status === 'Concluída';
+                          const isCancelado = a.status === 'cancelado';
+
+                          const now = new Date();
+                          const todayIso = now.toLocaleDateString('en-CA');
+                          const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                          const isPendente = a.status === 'agendado' && (rawDate < todayIso || (rawDate === todayIso && (a.hora_inicio || '').substring(0, 5) < currentTime));
+
+                          let statusBadge = <span className="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase">Agendada</span>;
+                          if (isConcluido) statusBadge = <span className="bg-purple-100 text-purple-900 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase">🟢 Concluída</span>;
+                          if (isPendente) statusBadge = <span className="bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase">🟠 Pendente</span>;
+                          if (isCancelado) statusBadge = <span className="bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase">🔴 Cancelada</span>;
+
+                          return (
+                            <tr key={a.id} className="hover:bg-slate-50/80 transition">
+                              <td className="p-3 font-extrabold text-slate-800">
+                                {ptBrDate} às {(a.hora_inicio || '09:00').substring(0, 5)}
+                              </td>
+                              <td className="p-3">
+                                {a.cliente_id ? (
+                                  <a
+                                    href={`/professional/patients/${a.cliente_id}`}
+                                    className="font-extrabold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
+                                  >
+                                    {a.paciente_nome || 'Paciente'}
+                                  </a>
+                                ) : (
+                                  <span>{a.paciente_nome || 'Paciente sem cadastro'}</span>
+                                )}
+                              </td>
+                              <td className="p-3">{statusBadge}</td>
+                              <td className="p-3 font-mono text-[11px] text-purple-900 font-bold">
+                                {a.token_confirmacao ? <span className="bg-purple-50 px-2 py-0.5 rounded border border-purple-200">{a.token_confirmacao}</span> : '-'}
+                              </td>
+                              <td className="p-3 text-right">
+                                {a.cliente_id ? (
+                                  <a
+                                    href={`/professional/patients/${a.cliente_id}`}
+                                    className="inline-flex items-center gap-1 text-[11px] font-extrabold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl border border-indigo-100 transition"
+                                  >
+                                    Prontuário 📋
+                                  </a>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 font-bold">Sem Prontuário</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Controles de Paginação */}
+                  {totalHistoryPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                      <span className="text-xs font-bold text-slate-500">
+                        Exibindo {(safeHistoryPage - 1) * historyPageSize + 1} a {Math.min(safeHistoryPage * historyPageSize, filtered.length)} de {filtered.length} consultas
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setHistoryPage(prev => Math.max(prev - 1, 1))}
+                          disabled={safeHistoryPage === 1}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 text-xs font-extrabold rounded-xl transition cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          Anterior
+                        </button>
+                        
+                        <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
+                          {safeHistoryPage} / {totalHistoryPages}
+                        </span>
+
+                        <button
+                          onClick={() => setHistoryPage(prev => Math.min(prev + 1, totalHistoryPages))}
+                          disabled={safeHistoryPage === totalHistoryPages}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 text-xs font-extrabold rounded-xl transition cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          Próximo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
         )}
       </div>
+
+      {/* MODAL DE VALIDAÇÃO DE TOKEN DO PACIENTE */}
+      {tokenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-5 animate-fadeIn border border-slate-100 relative">
+            <button
+              onClick={() => setTokenModal(null)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto border border-indigo-100">
+              <ShieldCheck size={32} />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="text-lg font-black text-slate-800">Aguardando Token do Paciente</h3>
+              <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                O código de confirmação foi enviado para o paciente via E-mail e Notificação no Sistema. Solicite o token ao paciente para validar e concluir este atendimento.
+              </p>
+            </div>
+
+            {tokenModal.loading ? (
+              <div className="flex flex-col items-center py-6 space-y-2">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                <p className="text-xs font-bold text-slate-500">Enviando token ao paciente...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                  <p className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                    <span>Paciente:</span>
+                    <b className="text-slate-900">{tokenModal.paciente?.nome}</b>
+                  </p>
+                  <p className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                    <span>E-mail do Paciente:</span>
+                    <span className="bg-blue-100 text-blue-800 text-[10px] font-black px-2.5 py-0.5 rounded-full">
+                      📧 {tokenModal.paciente?.email || 'Notificado por E-mail'}
+                    </span>
+                  </p>
+                  <p className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                    <span>Notificação na Plataforma:</span>
+                    <span className="bg-purple-100 text-purple-800 text-[10px] font-black px-2.5 py-0.5 rounded-full">
+                      🔔 Enviado no App
+                    </span>
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-black uppercase text-slate-500">
+                    Digite o Token/Código Fornecido pelo Paciente:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: CONF-W61EE5 ou W61EE5"
+                    value={tokenModal.inputToken}
+                    onChange={e => setTokenModal(prev => prev ? { ...prev, inputToken: e.target.value, error: null } : null)}
+                    className="w-full text-center tracking-widest font-black text-lg py-3 bg-white border-2 border-indigo-200 focus:border-indigo-600 rounded-xl outline-none transition uppercase shadow-xs text-indigo-900"
+                    autoFocus
+                  />
+                </div>
+
+                {tokenModal.error && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5">
+                    <AlertCircle size={16} /> {tokenModal.error}
+                  </div>
+                )}
+
+                <div className="space-y-2 pt-2">
+                  <button
+                    onClick={handleConfirmTokenValidation}
+                    disabled={tokenModal.validating || !tokenModal.inputToken.trim()}
+                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {tokenModal.validating ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Validando Token...</>
+                    ) : (
+                      <><CheckCircle2 size={16} /> Validar & Concluir Consulta</>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCompleteSlot(tokenModal.agendaId)}
+                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer text-center"
+                  >
+                    🔄 Reenviar E-mail e Notificação
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* CARD 2: PAINEL DE BLOQUEIOS */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
