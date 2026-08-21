@@ -321,33 +321,33 @@ export function AgendaCalendar({
                                   e.stopPropagation();
                                   setSelectedDate(dateStr);
                                 }}
-                                className={`p-1.5 rounded-lg border text-[11px] leading-tight cursor-pointer transition-all shadow-sm ${bgClass}`}
+                                className={`p-1.5 rounded-xl border text-[11px] leading-tight cursor-pointer transition-all shadow-xs relative overflow-hidden flex flex-col justify-between ${bgClass}`}
                               >
-                                <div className="font-bold flex items-center justify-between">
-                                  <span>{slot.hora_inicio.substring(0, 5)}</span>
+                                <div className="font-bold flex items-center justify-between gap-1 overflow-hidden w-full mb-0.5">
+                                  <span className="truncate">{slot.hora_inicio.substring(0, 5)}</span>
                                   {isBooked ? (
                                     isOverdue ? (
-                                      <span className="bg-amber-700/80 text-white text-[9px] px-1 py-0.2 rounded font-bold">🟠 Pendente</span>
+                                      <span className="bg-amber-800/90 text-amber-50 text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-tight shrink-0">Pendente</span>
                                     ) : (
-                                      <span className="bg-white/20 text-[9px] px-1 py-0.2 rounded font-semibold">Agendada</span>
+                                      <span className="bg-white/20 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-tight shrink-0">Agendada</span>
                                     )
                                   ) : (
-                                    <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-100 px-1 rounded">Livre</span>
+                                    <span className="text-[8px] font-extrabold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded uppercase tracking-tight shrink-0">Livre</span>
                                   )}
                                 </div>
                                 {isBooked && slot.paciente_nome && (
-                                  <div className="mt-1 font-semibold truncate text-[10px]">
+                                  <div className="mt-0.5 font-semibold truncate text-[10px] w-full overflow-hidden">
                                     {slot.cliente_id ? (
                                       <a
                                         href={`/professional/patients/${slot.cliente_id}`}
                                         onClick={(e) => e.stopPropagation()}
-                                        className="hover:underline text-white font-extrabold flex items-center gap-0.5"
+                                        className="hover:underline text-white font-extrabold flex items-center gap-0.5 truncate"
                                         title="Abrir prontuário completo do paciente"
                                       >
-                                        👤 {slot.paciente_nome} 📋
+                                        <span className="truncate">👤 {slot.paciente_nome}</span> 📋
                                       </a>
                                     ) : (
-                                      <span className="opacity-95">👤 {slot.paciente_nome}</span>
+                                      <span className="opacity-95 truncate block">👤 {slot.paciente_nome}</span>
                                     )}
                                   </div>
                                 )}

@@ -72,7 +72,7 @@ export const PublicExamView: React.FC = () => {
 
       if (res.status === 410 || data.expired) {
         setIsExpired(true);
-        setError(data.error || 'Este link de compartilhamento temporário expirou.');
+        setError(data.error || 'Este exame atingiu seu limite de horas e por isso não dá para ver mais o exame.');
         setExamData(null);
       } else if (!res.ok) {
         setError(data.error || 'Link de exame inválido ou não encontrado.');
@@ -220,8 +220,8 @@ trailer << /Size 6 /Root 1 0 R >> startxref 720 %%EOF`;
                 Acesso Temporário Encerrado
               </span>
               <h2 className="text-2xl font-black text-white">Link de Exame Expirado</h2>
-              <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                O prazo de visualização temporária configurado pelo paciente para este link foi atingido. Por motivos de segurança e privacidade (LGPD), este link não está mais acessível externamente.
+              <p className="text-xs text-amber-200 leading-relaxed font-semibold">
+                {error || 'Este exame atingiu seu limite de horas e por isso não dá para ver mais o exame.'}
               </p>
             </div>
 

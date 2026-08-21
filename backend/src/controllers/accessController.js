@@ -10,9 +10,16 @@ const ensureTablesExist = async () => {
         table.integer('cliente_id').notNullable();
         table.integer('medico_id').notNullable();
         table.string('concedido_por', 50).notNullable().defaultTo('clinica');
+        table.string('tipo_acesso', 50).notNullable().defaultTo('prontuario');
         table.dateTime('criado_em').defaultTo(db.fn.now());
-        table.unique(['cliente_id', 'medico_id']);
       });
+    } else {
+      const hasColumn = await db.schema.hasColumn('paciente_medico_acessos', 'tipo_acesso');
+      if (!hasColumn) {
+        await db.schema.table('paciente_medico_acessos', table => {
+          table.string('tipo_acesso', 50).notNullable().defaultTo('prontuario');
+        });
+      }
     }
 
     const hasNotifTable = await db.schema.hasTable('notificacoes_usuarios');
@@ -37,7 +44,8 @@ exports.concederAcesso = async (req, res) => {
   try {
     await ensureTablesExist();
 
-    const { cliente_id, medico_id, concedido_por } = req.body;
+    const { cliente_id, medico_id, concedido_por, tipo_acesso } = req.body;
+    const targetTipoAcesso = tipo_acesso || 'prontuario';
 
     if (!cliente_id || !medico_id) {
       return res.status(400).json({ error: 'cliente_id e medico_id são obrigatórios' });
@@ -68,14 +76,19 @@ exports.concederAcesso = async (req, res) => {
 
     // Registrar ou atualizar permissão no banco
     const existente = await db('paciente_medico_acessos')
-      .where({ cliente_id: parseInt(cliente_id), medico_id: parseInt(medico_id) })
+      .where({
+        cliente_id: parseInt(cliente_id),
+        medico_id: parseInt(medico_id),
+        tipo_acesso: targetTipoAcesso
+      })
       .first();
 
     if (!existente) {
       await db('paciente_medico_acessos').insert({
         cliente_id: parseInt(cliente_id),
         medico_id: parseInt(medico_id),
-        concedido_por: tipoConcedido
+        concedido_por: tipoConcedido,
+        tipo_acesso: targetTipoAcesso
       });
     } else {
       await db('paciente_medico_acessos')
@@ -131,17 +144,22 @@ exports.revogarAcesso = async (req, res) => {
   try {
     await ensureTablesExist();
 
-    const { cliente_id, medico_id } = req.body;
+    const { cliente_id, medico_id, tipo_acesso } = req.body;
 
     if (!cliente_id || !medico_id) {
       return res.status(400).json({ error: 'cliente_id e medico_id são obrigatórios' });
     }
 
+    const filterObj = { cliente_id: parseInt(cliente_id), medico_id: parseInt(medico_id) };
+    if (tipo_acesso) {
+      filterObj.tipo_acesso = tipo_acesso;
+    }
+
     await db('paciente_medico_acessos')
-      .where({ cliente_id: parseInt(cliente_id), medico_id: parseInt(medico_id) })
+      .where(filterObj)
       .del();
 
-    return res.json({ message: 'Acesso ao prontuário revogado com sucesso.' });
+    return res.json({ message: 'Acesso revogado com sucesso.' });
   } catch (error) {
     console.error('Erro ao revogar acesso:', error);
     return res.status(500).json({ error: `Erro interno ao revogar acesso: ${error.message}` });
@@ -153,7 +171,7 @@ exports.listarAcessos = async (req, res) => {
   try {
     await ensureTablesExist();
 
-    const { cliente_id, medico_id } = req.query;
+    const { cliente_id, medico_id, tipo_acesso } = req.query;
 
     let query = db('paciente_medico_acessos')
       .join('clientes', 'paciente_medico_acessos.cliente_id', '=', 'clientes.id')
@@ -171,6 +189,9 @@ exports.listarAcessos = async (req, res) => {
     }
     if (medico_id) {
       query = query.where('paciente_medico_acessos.medico_id', parseInt(medico_id));
+    }
+    if (tipo_acesso) {
+      query = query.where('paciente_medico_acessos.tipo_acesso', tipo_acesso);
     }
 
     const acessos = await query;

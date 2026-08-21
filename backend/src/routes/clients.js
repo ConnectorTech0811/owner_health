@@ -9,7 +9,9 @@ const {
   updateClientPayment,
   deleteClient,
   getPatientObservations,
-  createPatientObservation
+  createPatientObservation,
+  updatePatientObservation,
+  deletePatientObservation
 } = require('../controllers/clientController');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -21,6 +23,8 @@ router.get('/', authenticateToken, getClients);
 router.get('/:id', authenticateToken, getClientById);
 router.get('/:id/observations', authenticateToken, getPatientObservations);
 router.post('/:id/observations', authenticateToken, createPatientObservation);
+router.put('/:id/observations/:obsId', authenticateToken, updatePatientObservation);
+router.delete('/:id/observations/:obsId', authenticateToken, deletePatientObservation);
 router.put('/:id', authenticateToken, updateClient);
 router.put('/:id/toggle-status', authenticateToken, toggleClientStatus);
 router.put('/:id/payment-status', authenticateToken, updateClientPayment);

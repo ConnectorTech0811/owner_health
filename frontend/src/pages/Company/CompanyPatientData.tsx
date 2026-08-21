@@ -3,7 +3,7 @@ import {
   Search, FlaskConical, Pill, Scale, FileText,
   ShieldAlert, ShieldCheck, Download, Calendar, Users, Plus, ArrowLeft,
   Trash2, UserMinus, UserCheck, AlertTriangle, ChevronLeft, ChevronRight,
-  Filter, XCircle, List, LayoutGrid, Eye, X, MessageSquare, Loader2, Check
+  Filter, XCircle, List, LayoutGrid, Eye, X, MessageSquare, Loader2, Check, Edit3
 } from 'lucide-react';
 import { API_URL } from '../../config';
 import { PatientRegistrationModal } from '../../components/PatientRegistrationModal';
@@ -32,6 +32,14 @@ const formatDatePtBr = (dateStr?: string | null) => {
 export const CompanyPatientData: React.FC = () => {
   const [error, setError] = useState('');
   const [patientData, setPatientData] = useState<any>(null);
+  const [loadingPatientParam, setLoadingPatientParam] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const targetParam = params.get('cpf') || params.get('query') || params.get('id') || params.get('cliente_id');
+    if (targetParam) return true;
+    const pathParts = window.location.pathname.split('/');
+    const lastPart = pathParts[pathParts.length - 1];
+    return Boolean(lastPart && lastPart !== 'patients' && lastPart !== 'patient-data' && !isNaN(Number(lastPart)));
+  });
   const [activeTab, setActiveTab] = useState('anamnesis'); // anamnesis, exams, prescriptions, bioimpedance
   const [patientsList, setPatientsList] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -59,6 +67,7 @@ export const CompanyPatientData: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
 
   const [showGrantModal, setShowGrantModal] = useState(false);
+  const [grantModalTab, setGrantModalTab] = useState<'prontuario' | 'observacoes'>('prontuario');
   const [selectedPatientForGrant, setSelectedPatientForGrant] = useState<any>(null);
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
@@ -77,6 +86,11 @@ export const CompanyPatientData: React.FC = () => {
 
   const [newObsText, setNewObsText] = useState('');
   const [savingObs, setSavingObs] = useState(false);
+
+  const [editingObsId, setEditingObsId] = useState<number | null>(null);
+  const [editingObsText, setEditingObsText] = useState('');
+  const [savingEditObs, setSavingEditObs] = useState(false);
+  const [deletingObsId, setDeletingObsId] = useState<number | null>(null);
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -155,7 +169,7 @@ export const CompanyPatientData: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleGrantAccess = async () => {
+  const handleGrantAccess = async (targetType: 'prontuario' | 'observacoes' = grantModalTab) => {
     if (!selectedPatientForGrant || !selectedDoctorId) {
       alert('Selecione o paciente e o médico.');
       return;
@@ -176,13 +190,15 @@ export const CompanyPatientData: React.FC = () => {
         body: JSON.stringify({
           cliente_id: selectedPatientForGrant.id,
           medico_id: parseInt(selectedDoctorId),
-          concedido_por: perfilLiberacao
+          concedido_por: perfilLiberacao,
+          tipo_acesso: targetType
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao liberar acesso');
       
-      setGrantSuccessMsg(`Prontuário liberado para Dr(a). ${doctorName}!`);
+      const labelMsg = targetType === 'observacoes' ? 'Histórico & Observações' : 'Prontuário';
+      setGrantSuccessMsg(`Acesso a ${labelMsg} liberado para Dr(a). ${doctorName}!`);
       setSelectedDoctorId('');
       fetchAllAccesses();
     } catch (err: any) {
@@ -192,8 +208,9 @@ export const CompanyPatientData: React.FC = () => {
     }
   };
 
-  const handleRevokeAccess = async (medicoId: number, pacienteId: number) => {
-    if (!confirm('Deseja revogar o acesso deste médico ao prontuário?')) return;
+  const handleRevokeAccess = async (medicoId: number, pacienteId: number, targetType: 'prontuario' | 'observacoes' = grantModalTab) => {
+    const labelMsg = targetType === 'observacoes' ? 'ao histórico & observações' : 'ao prontuário';
+    if (!confirm(`Deseja revogar o acesso deste médico ${labelMsg}?`)) return;
     try {
       const res = await fetch(`${API_URL}/api/access/revoke`, {
         method: 'POST',
@@ -203,7 +220,8 @@ export const CompanyPatientData: React.FC = () => {
         },
         body: JSON.stringify({
           cliente_id: pacienteId,
-          medico_id: medicoId
+          medico_id: medicoId,
+          tipo_acesso: targetType
         })
       });
       if (res.ok) {
@@ -291,9 +309,62 @@ export const CompanyPatientData: React.FC = () => {
     }
   };
 
+  const handleSaveEditObservation = async (obsId: number) => {
+    if (!editingObsText.trim() || !patientData?.patient?.id) return;
+    setSavingEditObs(true);
+    try {
+      const res = await fetch(`${API_URL}/api/clients/${patientData.patient.id}/observations/${obsId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ observacao: editingObsText.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEditingObsId(null);
+        setEditingObsText('');
+        fetchObservations(patientData.patient.id);
+        alert('Observação médica atualizada com sucesso!');
+      } else {
+        alert(data.error || 'Erro ao atualizar observação.');
+      }
+    } catch (err: any) {
+      alert('Erro ao conectar com o servidor.');
+    } finally {
+      setSavingEditObs(false);
+    }
+  };
+
+  const handleDeleteObservation = async (obsId: number) => {
+    if (!confirm('Tem certeza que deseja excluir esta observação do histórico do paciente?')) return;
+    setDeletingObsId(obsId);
+    try {
+      const res = await fetch(`${API_URL}/api/clients/${patientData.patient.id}/observations/${obsId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchObservations(patientData.patient.id);
+        alert('Observação excluída com sucesso.');
+      } else {
+        alert(data.error || 'Erro ao excluir observação.');
+      }
+    } catch (err: any) {
+      alert('Erro ao conectar com o servidor.');
+    } finally {
+      setDeletingObsId(null);
+    }
+  };
+
   const loadPatientByCpf = async (cpf: string) => {
     setError('');
     setPatientData(null);
+    setLoadingPatientParam(true);
     try {
       const res = await fetch(`${API_URL}/api/companies/${companyId}/patient-data/${cpf}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -306,6 +377,8 @@ export const CompanyPatientData: React.FC = () => {
       }
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setLoadingPatientParam(false);
     }
   };
 
@@ -363,6 +436,18 @@ export const CompanyPatientData: React.FC = () => {
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedPatients = filteredPatients.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
+  if (loadingPatientParam) {
+    return (
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-16 text-center shadow-xs space-y-4 my-8 animate-fadeIn">
+        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto" />
+        <div>
+          <h3 className="text-base font-extrabold text-slate-800">Carregando Prontuário do Paciente...</h3>
+          <p className="text-xs text-slate-500 font-medium mt-1">Buscando histórico clínico, anamnese e exames do paciente.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Cabeçalho */}
@@ -378,14 +463,23 @@ export const CompanyPatientData: React.FC = () => {
         </div>
 
         {user.tipo_profissional !== 'medico' && !patientData && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => { fetchDoctors(); setShowGrantModal(true); }}
-              className="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-800 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer border border-amber-200 shadow-xs"
+              onClick={() => { fetchDoctors(); setGrantModalTab('prontuario'); setShowGrantModal(true); }}
+              className="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition cursor-pointer shadow-xs"
             >
               <ShieldCheck className="w-4 h-4 text-amber-600" />
-              <span>Acesso ao Médico</span>
+              <span>Acesso ao Prontuário</span>
             </button>
+
+            <button
+              onClick={() => { fetchDoctors(); setGrantModalTab('observacoes'); setShowGrantModal(true); }}
+              className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition cursor-pointer shadow-xs"
+            >
+              <MessageSquare className="w-4 h-4 text-indigo-600" />
+              <span>Acesso a Histórico & Observações</span>
+            </button>
+
             <button
               onClick={() => setShowModal(true)}
               className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-md"
@@ -981,128 +1075,6 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
         </div>
       )}
 
-      {/* Modal de Liberar Acesso ao Médico (Opção 1 - Clínica/Hospital/Admin) */}
-      {showGrantModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl border border-slate-100 animate-fadeIn space-y-5 max-h-[90vh] overflow-y-auto my-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-amber-600" />
-                <span>Liberar Acesso ao Prontuário</span>
-              </h3>
-              <button
-                onClick={() => { setShowGrantModal(false); setSelectedPatientForGrant(null); setGrantSuccessMsg(''); }}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <SearchableSelect
-                  label="Selecione o Paciente"
-                  options={patientsList.map(p => ({
-                    id: p.id,
-                    label: p.nome,
-                    sublabel: p.cpf ? `CPF: ${p.cpf}` : undefined,
-                    extra: p.celular ? `Tel: ${p.celular}` : undefined
-                  }))}
-                  value={selectedPatientForGrant?.id || ''}
-                  onChange={(val) => {
-                    const p = patientsList.find(pt => String(pt.id) === String(val));
-                    setSelectedPatientForGrant(p || null);
-                    setGrantSuccessMsg('');
-                  }}
-                  placeholder="Digite para buscar por Nome ou CPF..."
-                />
-              </div>
-
-              {selectedPatientForGrant && (() => {
-                const currentPatientAccesses = allAccesses.filter(a => a.cliente_id === selectedPatientForGrant.id);
-                const grantedDocIds = currentPatientAccesses.map(a => a.medico_id);
-                const availableDoctors = doctorsList.filter(doc => !grantedDocIds.includes(doc.id));
-
-                const doctorOpts = availableDoctors.map(doc => ({
-                  id: doc.id,
-                  label: `Dr(a). ${doc.nome}`,
-                  sublabel: doc.especialidade || 'Médico',
-                  extra: doc.numero_conselho || 'CRM'
-                }));
-
-                return (
-                  <div className="space-y-4">
-                    <div>
-                      <SearchableSelect
-                        label="Selecione o Médico da Clínica"
-                        options={doctorOpts}
-                        value={selectedDoctorId}
-                        onChange={(val) => setSelectedDoctorId(val ? String(val) : '')}
-                        placeholder="Digite para buscar médico por Nome, CRM ou Especialidade..."
-                      />
-                      {availableDoctors.length === 0 && (
-                        <p className="text-[11px] text-amber-600 font-bold mt-1">
-                          Todos os médicos cadastrados já possuem acesso ao prontuário deste paciente.
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Lista dos Médicos que Já Têm Acesso ao Prontuário */}
-                    {currentPatientAccesses.length > 0 && (
-                      <div className="border-t border-slate-100 pt-3 space-y-2">
-                        <h4 className="text-[11px] font-bold text-slate-700">Médicos com Acesso Liberado ({currentPatientAccesses.length})</h4>
-                        <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                          {currentPatientAccesses.map(acc => (
-                            <div key={acc.id} className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center justify-between text-xs font-bold">
-                              <div>
-                                <p className="text-slate-800">Dr(a). {acc.medico_nome}</p>
-                                <p className="text-[10px] text-slate-400 font-medium">Liberado por: {acc.concedido_por}</p>
-                              </div>
-                              <button
-                                onClick={() => handleRevokeAccess(acc.medico_id, selectedPatientForGrant.id)}
-                                className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 bg-red-50 rounded hover:bg-red-100 transition cursor-pointer"
-                              >
-                                Revogar
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-amber-900 text-xs font-medium leading-relaxed">
-                Perfil de Liberação: <strong className="capitalize">{perfilLiberacao}</strong>. Ao liberar o acesso, o médico selecionado receberá uma notificação em tempo real com a data e hora.
-              </div>
-
-              {grantSuccessMsg && (
-                <div className="bg-emerald-100 border border-emerald-200 text-emerald-800 p-3.5 rounded-xl text-xs font-bold text-center animate-fadeIn">
-                  {grantSuccessMsg}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => { setShowGrantModal(false); setSelectedPatientForGrant(null); setGrantSuccessMsg(''); }}
-                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
-              >
-                Concluir
-              </button>
-              <button
-                onClick={handleGrantAccess}
-                disabled={granting || !selectedPatientForGrant || !selectedDoctorId}
-                className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition shadow-md cursor-pointer disabled:opacity-50"
-              >
-                {granting ? 'Liberando...' : 'Confirmar Liberação'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal de Confirmação de Exclusão Permanente do Paciente */}
       {deletePatientModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
@@ -1155,16 +1127,213 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
         />
       )}
 
+      {/* Modal de Liberar Acesso ao Médico (Com Duas Abas Separadas) */}
+      {showGrantModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl border border-slate-100 animate-fadeIn space-y-5 max-h-[90vh] overflow-y-auto my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-indigo-600" />
+                <span>Gestão de Permissões de Acesso</span>
+              </h3>
+              <button
+                onClick={() => { setShowGrantModal(false); setSelectedPatientForGrant(null); setGrantSuccessMsg(''); }}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* ABAS NAVEGÁVEIS DO MODAL */}
+            <div className="flex border-b border-slate-200 bg-slate-50/80 p-1 rounded-2xl gap-1">
+              <button
+                onClick={() => { setGrantModalTab('prontuario'); setGrantSuccessMsg(''); }}
+                className={`flex-1 py-2.5 px-3 text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  grantModalTab === 'prontuario'
+                    ? 'bg-white text-indigo-700 shadow-xs border border-slate-200/60'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <ShieldCheck size={14} className="text-amber-600" />
+                <span>Acesso ao Prontuário</span>
+              </button>
+              <button
+                onClick={() => { setGrantModalTab('observacoes'); setGrantSuccessMsg(''); }}
+                className={`flex-1 py-2.5 px-3 text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  grantModalTab === 'observacoes'
+                    ? 'bg-white text-indigo-700 shadow-xs border border-slate-200/60'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <MessageSquare size={14} className="text-indigo-600" />
+                <span>Histórico & Observações</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <SearchableSelect
+                  label="Selecione o Paciente"
+                  options={patientsList.map(p => ({
+                    id: p.id,
+                    label: p.nome,
+                    sublabel: p.cpf ? `CPF: ${p.cpf}` : undefined,
+                    extra: p.celular ? `Tel: ${p.celular}` : undefined
+                  }))}
+                  value={selectedPatientForGrant?.id || ''}
+                  onChange={(val) => {
+                    const p = patientsList.find(pt => String(pt.id) === String(val));
+                    setSelectedPatientForGrant(p || null);
+                    setGrantSuccessMsg('');
+                  }}
+                  placeholder="Digite para buscar por Nome ou CPF..."
+                />
+              </div>
+
+              {selectedPatientForGrant && (() => {
+                const currentPatientAccesses = allAccesses.filter(a =>
+                  a.cliente_id === selectedPatientForGrant.id &&
+                  ((grantModalTab === 'observacoes' && a.tipo_acesso === 'observacoes') ||
+                   (grantModalTab === 'prontuario' && (a.tipo_acesso === 'prontuario' || !a.tipo_acesso)))
+                );
+                const grantedDocIds = currentPatientAccesses.map(a => a.medico_id);
+                const availableDoctors = doctorsList.filter(doc => !grantedDocIds.includes(doc.id));
+
+                const doctorOpts = availableDoctors.map(doc => ({
+                  id: doc.id,
+                  label: `Dr(a). ${doc.nome}`,
+                  sublabel: (doc.especialidade && doc.especialidade.trim().toLowerCase() !== 'médico' && doc.especialidade.trim().toLowerCase() !== 'medico') ? doc.especialidade : 'Clínico Geral',
+                  extra: doc.numero_conselho || 'CRM'
+                }));
+
+                return (
+                  <div className="space-y-4">
+                    <div>
+                      <SearchableSelect
+                        label={grantModalTab === 'observacoes' ? "Selecione o Médico para Ver o Histórico/Observações" : "Selecione o Médico para Acessar o Prontuário"}
+                        options={doctorOpts}
+                        value={selectedDoctorId}
+                        onChange={(val) => setSelectedDoctorId(val ? String(val) : '')}
+                        placeholder="Digite para buscar médico por Nome, CRM ou Especialidade..."
+                      />
+                      {availableDoctors.length === 0 && (
+                        <p className="text-[11px] text-amber-600 font-bold mt-1">
+                          Todos os médicos cadastrados já possuem essa permissão para este paciente.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Lista dos Médicos com Acesso Liberado na Aba Atual */}
+                    {currentPatientAccesses.length > 0 && (
+                      <div className="border-t border-slate-100 pt-3 space-y-2">
+                        <h4 className="text-[11px] font-bold text-slate-700">
+                          Médicos com {grantModalTab === 'observacoes' ? 'Acesso ao Histórico' : 'Acesso ao Prontuário'} Liberado ({currentPatientAccesses.length})
+                        </h4>
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                          {currentPatientAccesses.map(acc => (
+                            <div key={acc.id} className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center justify-between text-xs font-bold">
+                              <div>
+                                <p className="text-slate-800">Dr(a). {acc.medico_nome}</p>
+                                <p className="text-[10px] text-slate-400 font-medium">Liberado por: {acc.concedido_por}</p>
+                              </div>
+                              <button
+                                onClick={() => handleRevokeAccess(acc.medico_id, selectedPatientForGrant.id, grantModalTab)}
+                                className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 bg-red-50 rounded hover:bg-red-100 transition cursor-pointer"
+                              >
+                                Revogar
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Mensagem de sucesso */}
+                    {grantSuccessMsg && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{grantSuccessMsg}</span>
+                      </div>
+                    )}
+
+                    <div className="bg-amber-50/70 border border-amber-200/80 p-3 rounded-2xl text-[11px] text-amber-800 font-semibold space-y-1">
+                      <p className="font-extrabold flex items-center gap-1">
+                        ℹ️ {grantModalTab === 'observacoes' ? 'Acesso a Histórico & Observações:' : 'Acesso ao Prontuário:'}
+                      </p>
+                      <p className="text-[10px] text-amber-700 leading-relaxed">
+                        {grantModalTab === 'observacoes'
+                          ? 'Ao liberar esta aba, o médico selecionado poderá visualizar todas as anotações médicas do paciente, mesmo que seja de especialidade diferente.'
+                          : 'Ao liberar esta aba, o médico selecionado terá permissão para visualizar a ficha e dados do prontuário do paciente.'
+                        }
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        onClick={() => { setShowGrantModal(false); setSelectedPatientForGrant(null); setGrantSuccessMsg(''); }}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                      >
+                        Concluir
+                      </button>
+                      <button
+                        onClick={() => handleGrantAccess(grantModalTab)}
+                        disabled={granting || !selectedDoctorId}
+                        className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                      >
+                        {granting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                        <span>Confirmar Liberação</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Prontuário do Paciente */}
       {patientData && (
         <div className="space-y-6">
-          <button
-            onClick={() => setPatientData(null)}
-            className="flex items-center gap-2 text-xs font-bold text-indigo-600 bg-white border border-slate-200 px-4 py-2.5 rounded-xl hover:bg-slate-50 transition cursor-pointer shadow-xs"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar para Lista de Pacientes
-          </button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <button
+              onClick={() => setPatientData(null)}
+              className="flex items-center gap-2 text-xs font-bold text-indigo-600 bg-white border border-slate-200 px-4 py-2.5 rounded-xl hover:bg-slate-50 transition cursor-pointer shadow-xs"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar para Lista de Pacientes
+            </button>
+
+            {user.tipo_profissional !== 'medico' && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedPatientForGrant(patientData.patient);
+                    fetchDoctors();
+                    setGrantModalTab('observacoes');
+                    setShowGrantModal(true);
+                  }}
+                  className="flex items-center gap-2 text-xs font-extrabold text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-4 py-2.5 rounded-xl transition cursor-pointer shadow-xs"
+                >
+                  <MessageSquare className="w-4 h-4 text-indigo-600" />
+                  <span>Liberar Acesso a Histórico & Observações</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSelectedPatientForGrant(patientData.patient);
+                    fetchDoctors();
+                    setGrantModalTab('prontuario');
+                    setShowGrantModal(true);
+                  }}
+                  className="flex items-center gap-2 text-xs font-extrabold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-4 py-2.5 rounded-xl transition cursor-pointer shadow-xs"
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>Liberar Acesso ao Prontuário</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
@@ -1629,28 +1798,87 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
                       {(!observationsData.observations || observationsData.observations.length === 0) ? (
                         <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-slate-400">
                           <MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                          <p className="text-xs font-bold text-slate-500">Nenhuma observação clínica registrada até o momento.</p>
+                          <p className="text-xs font-bold text-slate-500">Nenhuma observação clínica visível ou registrada até o momento.</p>
                         </div>
                       ) : (
-                        observationsData.observations.map(obs => (
-                          <div key={obs.id} className="bg-white border border-slate-200/90 rounded-2xl p-4 space-y-2.5 shadow-xs hover:border-indigo-200 transition">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-100 pb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="font-extrabold text-xs text-slate-900">Dr(a). {obs.medico_nome}</span>
-                                <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-indigo-100">
-                                  {obs.medico_especialidade || 'Médico'}
-                                </span>
-                              </div>
-                              <span className="text-[10px] font-bold text-slate-400">
-                                {formatDatePtBr(obs.criado_em)} às {obs.criado_em ? obs.criado_em.substring(11, 16) : ''}
-                              </span>
-                            </div>
+                        observationsData.observations.map(obs => {
+                          const isAuthor = (observationsData.doctor_id && parseInt(obs.medico_id) === observationsData.doctor_id) || (user.tipo === 'admin' || user.eh_admin);
+                          const isEditingThis = editingObsId === obs.id;
 
-                            <p className="text-xs text-slate-700 leading-relaxed font-semibold whitespace-pre-wrap">
-                              {obs.observacao}
-                            </p>
-                          </div>
-                        ))
+                          return (
+                            <div key={obs.id} className="bg-white border border-slate-200/90 rounded-2xl p-4 space-y-2.5 shadow-xs hover:border-indigo-200 transition">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-100 pb-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-extrabold text-xs text-slate-900">Dr(a). {obs.medico_nome}</span>
+                                  <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-indigo-100">
+                                    {(obs.medico_especialidade && obs.medico_especialidade.trim().toLowerCase() !== 'médico' && obs.medico_especialidade.trim().toLowerCase() !== 'medico') ? obs.medico_especialidade : 'Clínico Geral'}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[10px] font-bold text-slate-400">
+                                    {formatDatePtBr(obs.criado_em)} às {obs.criado_em ? obs.criado_em.substring(11, 16) : ''}
+                                  </span>
+
+                                  {isAuthor && !isEditingThis && (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        onClick={() => {
+                                          setEditingObsId(obs.id);
+                                          setEditingObsText(obs.observacao);
+                                        }}
+                                        title="Editar minha observação"
+                                        className="p-1 text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer flex items-center gap-1 font-extrabold text-[11px]"
+                                      >
+                                        <Edit3 size={13} />
+                                        <span>Editar</span>
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteObservation(obs.id)}
+                                        disabled={deletingObsId === obs.id}
+                                        title="Excluir minha observação"
+                                        className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer disabled:opacity-50 flex items-center gap-1 font-extrabold text-[11px]"
+                                      >
+                                        <Trash2 size={13} />
+                                        <span>{deletingObsId === obs.id ? 'Excluindo...' : 'Excluir'}</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {isEditingThis ? (
+                                <div className="space-y-2 pt-1">
+                                  <textarea
+                                    rows={3}
+                                    value={editingObsText}
+                                    onChange={e => setEditingObsText(e.target.value)}
+                                    className="w-full bg-white border border-indigo-300 rounded-xl p-3 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+                                  />
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      onClick={() => setEditingObsId(null)}
+                                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                                    >
+                                      Cancelar
+                                    </button>
+                                    <button
+                                      onClick={() => handleSaveEditObservation(obs.id)}
+                                      disabled={savingEditObs || !editingObsText.trim()}
+                                      className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                                    >
+                                      {savingEditObs ? 'Salvando...' : 'Salvar Alteração'}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-700 leading-relaxed font-semibold whitespace-pre-wrap">
+                                  {obs.observacao}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>

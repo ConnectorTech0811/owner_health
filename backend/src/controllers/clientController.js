@@ -403,13 +403,28 @@ const getPatientObservations = async (req, res) => {
     const db = require('../../knexfile');
     await ensureObservationsTable(db);
 
+    // Sincronizar especialidades antigas na tabela de observações com a tabela profissionais
+    try {
+      await db.raw(`
+        UPDATE paciente_observacoes_medicas pom
+        JOIN profissionais p ON pom.medico_id = p.id
+        SET pom.medico_especialidade = p.especialidade
+        WHERE p.especialidade IS NOT NULL AND p.especialidade != '' AND LOWER(p.especialidade) != 'médico' AND LOWER(p.especialidade) != 'medico'
+      `);
+    } catch {}
+
     const targetClienteId = parseInt(cliente_id);
 
-    // Buscar observações já registradas
-    const observations = await db('paciente_observacoes_medicas')
-      .where({ cliente_id: targetClienteId })
-      .orderBy('criado_em', 'desc')
-      .select();
+    // Buscar observações já registradas incluindo a especialidade real do profissional
+    const rawObservations = await db('paciente_observacoes_medicas')
+      .leftJoin('profissionais', 'paciente_observacoes_medicas.medico_id', 'profissionais.id')
+      .where({ 'paciente_observacoes_medicas.cliente_id': targetClienteId })
+      .orderBy('paciente_observacoes_medicas.criado_em', 'desc')
+      .select(
+        'paciente_observacoes_medicas.*',
+        'profissionais.especialidade as autor_especialidade_real',
+        'profissionais.nome as autor_nome_real'
+      );
 
     // Resolver médico logado
     let doctor = null;
@@ -418,6 +433,66 @@ const getPatientObservations = async (req, res) => {
       if (!doctor && req.user.email) doctor = await db('profissionais').where({ email: req.user.email }).first();
       if (!doctor && req.user.profissional_id) doctor = await db('profissionais').where({ id: req.user.profissional_id }).first();
     }
+
+    const isClinicOrAdmin = req.user && (
+      req.user.tipo === 'empresa' ||
+      req.user.eh_empresa ||
+      req.user.tipo === 'admin' ||
+      req.user.eh_admin ||
+      req.user.role === 'admin'
+    ) && !doctor;
+
+    let temAcessoObservacoesClinica = false;
+    if (doctor) {
+      try {
+        const hasTable = await db.schema.hasTable('paciente_medico_acessos');
+        if (hasTable) {
+          const accRecord = await db('paciente_medico_acessos')
+            .where({
+              cliente_id: targetClienteId,
+              medico_id: doctor.id
+            })
+            .whereIn('tipo_acesso', ['observacoes', 'historico_observacoes'])
+            .first();
+
+          if (accRecord) temAcessoObservacoesClinica = true;
+        }
+      } catch (eAcc) {
+        console.error('Erro ao verificar acesso da clínica:', eAcc.message);
+      }
+    }
+
+    // Normalizar especialidade do médico logado
+    const doctorSpecRaw = doctor ? (doctor.especialidade || '') : '';
+    const doctorSpec = doctorSpecRaw.trim().toLowerCase();
+    const isDoctorSpecDefault = !doctorSpec || doctorSpec === 'médico' || doctorSpec === 'medico';
+
+    // Filtragem de observações por permissão estrita
+    const observations = (rawObservations || []).filter(obs => {
+      // 1. Perfil Clínica / Admin tem visão total das observações da clínica
+      if (isClinicOrAdmin) return true;
+      if (!doctor) return false;
+
+      // 2. O próprio médico autor da observação sempre visualiza a sua anotação
+      if (parseInt(obs.medico_id) === doctor.id) return true;
+
+      // 3. Se a clínica liberou acesso específico ao HISTÓRICO & OBSERVAÇÕES para este médico, ele visualiza tudo
+      if (temAcessoObservacoesClinica) return true;
+
+      // 4. Médicos da MESMA ESPECIALIDADE visualizam as anotações entre si
+      // Obter especialidade real do autor (da tabela profissionais ou da observação)
+      const authorSpecRaw = obs.autor_especialidade_real || obs.medico_especialidade || '';
+      const authorSpec = authorSpecRaw.trim().toLowerCase();
+      const isAuthorSpecDefault = !authorSpec || authorSpec === 'médico' || authorSpec === 'medico';
+
+      // Se qualquer um dos dois não tem especialidade definida ou possui apenas o termo genérico 'médico', NÃO compartilha sem liberação
+      if (isDoctorSpecDefault || isAuthorSpecDefault) {
+        return false;
+      }
+
+      // Comparação exata de especialidade (ex: 'cardiologia' === 'cardiologia')
+      return doctorSpec === authorSpec;
+    });
 
     let podeAdicionar = false;
     if (doctor) {
@@ -440,7 +515,8 @@ const getPatientObservations = async (req, res) => {
       pode_adicionar: podeAdicionar,
       doctor_id: doctor ? doctor.id : null,
       doctor_nome: doctor ? doctor.nome : null,
-      doctor_especialidade: doctor ? (doctor.especialidade || 'Médico') : null
+      doctor_especialidade: doctor ? ((doctor.especialidade && doctor.especialidade.trim().toLowerCase() !== 'médico' && doctor.especialidade.trim().toLowerCase() !== 'medico') ? doctor.especialidade : 'Clínico Geral') : null,
+      tem_acesso_liberado_clinica: temAcessoObservacoesClinica
     });
   } catch (err) {
     console.error('Erro em getPatientObservations:', err);
@@ -493,7 +569,7 @@ const createPatientObservation = async (req, res) => {
       cliente_id: targetClienteId,
       medico_id: doctor.id,
       medico_nome: doctor.nome,
-      medico_especialidade: doctor.especialidade || 'Médico',
+      medico_especialidade: (doctor.especialidade && doctor.especialidade.trim().toLowerCase() !== 'médico' && doctor.especialidade.trim().toLowerCase() !== 'medico') ? doctor.especialidade : 'Clínico Geral',
       observacao: observacao.trim(),
       criado_em: new Date().toISOString()
     });
@@ -508,6 +584,87 @@ const createPatientObservation = async (req, res) => {
   }
 };
 
+const updatePatientObservation = async (req, res) => {
+  const { id: cliente_id, obsId } = req.params;
+  const { observacao } = req.body;
+
+  if (!observacao || !observacao.trim()) {
+    return res.status(400).json({ error: 'Informe o conteúdo da observação.' });
+  }
+
+  try {
+    const db = require('../../knexfile');
+    await ensureObservationsTable(db);
+
+    const targetObsId = parseInt(obsId);
+    const existing = await db('paciente_observacoes_medicas').where({ id: targetObsId }).first();
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Observação médica não encontrada.' });
+    }
+
+    let doctor = null;
+    if (req.user) {
+      if (req.user.id) doctor = await db('profissionais').where({ usuario_id: req.user.id }).first();
+      if (!doctor && req.user.email) doctor = await db('profissionais').where({ email: req.user.email }).first();
+      if (!doctor && req.user.profissional_id) doctor = await db('profissionais').where({ id: req.user.profissional_id }).first();
+    }
+
+    const isAdmin = req.user && (req.user.eh_admin || req.user.tipo === 'admin');
+
+    if (!isAdmin && (!doctor || parseInt(existing.medico_id) !== doctor.id)) {
+      return res.status(403).json({ error: 'Apenas o médico autor desta observação possui permissão para editá-la.' });
+    }
+
+    await db('paciente_observacoes_medicas')
+      .where({ id: targetObsId })
+      .update({ observacao: observacao.trim() });
+
+    return res.json({ message: 'Observação clínica atualizada com sucesso!' });
+  } catch (err) {
+    console.error('Erro em updatePatientObservation:', err);
+    return res.status(500).json({ error: 'Erro ao atualizar observação médica.' });
+  }
+};
+
+const deletePatientObservation = async (req, res) => {
+  const { id: cliente_id, obsId } = req.params;
+
+  try {
+    const db = require('../../knexfile');
+    await ensureObservationsTable(db);
+
+    const targetObsId = parseInt(obsId);
+    const existing = await db('paciente_observacoes_medicas').where({ id: targetObsId }).first();
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Observação médica não encontrada.' });
+    }
+
+    let doctor = null;
+    if (req.user) {
+      if (req.user.id) doctor = await db('profissionais').where({ usuario_id: req.user.id }).first();
+      if (!doctor && req.user.email) doctor = await db('profissionais').where({ email: req.user.email }).first();
+      if (!doctor && req.user.profissional_id) doctor = await db('profissionais').where({ id: req.user.profissional_id }).first();
+    }
+
+    const isAdmin = req.user && (req.user.eh_admin || req.user.tipo === 'admin');
+
+    if (!isAdmin && (!doctor || parseInt(existing.medico_id) !== doctor.id)) {
+      return res.status(403).json({ error: 'Apenas o médico autor desta observação possui permissão para excluí-la.' });
+    }
+
+    await db('paciente_observacoes_medicas')
+      .where({ id: targetObsId })
+      .del();
+
+    return res.json({ message: 'Observação clínica excluída com sucesso!' });
+  } catch (err) {
+    console.error('Erro em deletePatientObservation:', err);
+    return res.status(500).json({ error: 'Erro ao excluir observação médica.' });
+  }
+};
+
 module.exports = {
   getClients,
   getClientById,
@@ -517,5 +674,7 @@ module.exports = {
   updateClientPayment,
   deleteClient,
   getPatientObservations,
-  createPatientObservation
+  createPatientObservation,
+  updatePatientObservation,
+  deletePatientObservation
 };

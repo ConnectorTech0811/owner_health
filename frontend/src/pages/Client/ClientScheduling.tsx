@@ -628,7 +628,7 @@ export const ClientScheduling: React.FC = () => {
                       options={availableDoctors.map(doc => ({
                         id: doc.id,
                         label: `Dr(a). ${doc.nome}`,
-                        sublabel: doc.especialidade || 'Médico',
+                        sublabel: (doc.especialidade && doc.especialidade.trim().toLowerCase() !== 'médico' && doc.especialidade.trim().toLowerCase() !== 'medico') ? doc.especialidade : 'Clínico Geral',
                         extra: doc.numero_conselho || 'CRM'
                       }))}
                       value={selectedDoctorId}
@@ -667,7 +667,7 @@ export const ClientScheduling: React.FC = () => {
                       <div>
                         <p className="text-xs font-bold text-slate-800">{acc.medico_nome}</p>
                         <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                          {acc.medico_especialidade || 'Médico'} • Liberado por: {acc.concedido_por}
+                          {(acc.medico_especialidade && acc.medico_especialidade.trim().toLowerCase() !== 'médico' && acc.medico_especialidade.trim().toLowerCase() !== 'medico') ? acc.medico_especialidade : 'Clínico Geral'} • Liberado por: {acc.concedido_por}
                         </p>
                       </div>
                       <button

@@ -131,20 +131,7 @@ export const SharedExams: React.FC = () => {
     }
   };
 
-  const handleDeleteShare = async (tokenOrId: string | number) => {
-    if (!window.confirm('Tem certeza que deseja remover este exame do seu painel? O exame continuará salvo e intacto na conta do paciente.')) {
-      return;
-    }
-    try {
-      await fetch(`${API_URL}/api/exams/share/${tokenOrId}`, {
-        method: 'DELETE',
-        headers
-      });
-      setAllShares(prev => prev.filter((s: any) => s.token !== tokenOrId && s.id !== tokenOrId));
-    } catch {
-      setAllShares(prev => prev.filter((s: any) => s.token !== tokenOrId && s.id !== tokenOrId));
-    }
-  };
+
 
   const fetchData = async () => {
     setLoading(true);
@@ -161,7 +148,7 @@ export const SharedExams: React.FC = () => {
           return;
         } else {
           const errData = await res.json().catch(() => ({}));
-          const msg = errData.error || 'Acesso Negado ou Token Inválido.';
+          const msg = errData.error || (res.status === 410 ? 'Este exame atingiu seu limite de horas e por isso não dá para ver mais o exame.' : 'Acesso Negado ou Token Inválido.');
           setError(msg);
           setSharedData(null);
         }
@@ -344,7 +331,34 @@ trailer << /Size 6 /Root 1 0 R >> startxref 700 %%EOF`;
     link.click();
   };
 
+  const isShareExpired = (s: any) => {
+    if (!s) return false;
+    if (s.expira_em) {
+      const expDate = new Date(s.expira_em);
+      if (!isNaN(expDate.getTime()) && new Date() > expDate) return true;
+    }
+    if (s.duracao && s.duracao !== 'permanent' && s.duracao !== 'Permanente' && (s.criado_em || s.criadoEm)) {
+      const createdStr = s.criado_em || s.criadoEm;
+      const created = new Date(createdStr);
+      if (!isNaN(created.getTime())) {
+        let hours = 24;
+        const dur = String(s.duracao).toLowerCase();
+        if (dur.includes('d') || dur.includes('dia')) {
+          const days = parseInt(dur.replace(/[^0-9]/g, '')) || 7;
+          hours = days * 24;
+        } else {
+          hours = parseInt(dur.replace(/[^0-9]/g, '')) || 24;
+        }
+        const expDate = new Date(created.getTime() + hours * 60 * 60 * 1000);
+        if (!isNaN(expDate.getTime()) && new Date() > expDate) return true;
+      }
+    }
+    return false;
+  };
+
   const filteredSharesList = allShares.filter(sh => {
+    if (isShareExpired(sh)) return false;
+
     const isRead = sh.visualizado === 1 || !!(sh as any).visualizado;
     if (activeTab === 'pending' && isRead) return false;
     if (activeTab === 'history' && !isRead) return false;
@@ -746,19 +760,11 @@ trailer << /Size 6 /Root 1 0 R >> startxref 700 %%EOF`;
                                     }
                                     navigate(`/exames-compartilhados?token=${sh.token}`);
                                   }}
-                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition hover:-translate-y-0.5 shadow-sm cursor-pointer ${
+                                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition hover:-translate-y-0.5 shadow-sm cursor-pointer ${
                                     !isRead ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
                                   }`}
                                 >
                                   <Eye className="w-3.5 h-3.5" /> Visualizar Exame
-                                </button>
-
-                                <button
-                                  onClick={() => handleDeleteShare(sh.token || (sh as any).id)}
-                                  title="Remover este exame do meu painel médico (mantém intacto na conta do paciente)"
-                                  className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             </td>

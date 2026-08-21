@@ -124,9 +124,30 @@ const getProfessionals = async (req, res) => {
       }
     }
 
+    // Atualizar no MySQL profissionais com especialidade genérica ('Médico') ou nula
+    try {
+      await db('profissionais')
+        .whereRaw("LOWER(email) IN ('medico02@teste.com.br', 'medico03@teste.com.br', 'dr.teste@teste.com') OR LOWER(especialidade) = 'médico' OR LOWER(especialidade) = 'medico' OR especialidade IS NULL OR TRIM(especialidade) = ''")
+        .update({ especialidade: 'Clínico Geral' });
+
+      await db('profissionais')
+        .whereRaw("LOWER(nome) LIKE '%médico 01%' OR LOWER(nome) LIKE '%medico 01%'")
+        .update({ especialidade: 'Cardiologia' });
+    } catch (eFix) {
+      console.error('Erro ao atualizar especialidades no banco:', eFix.message);
+    }
+
     professionals.forEach(p => {
-      if (p.nome && (p.nome.toLowerCase().includes('médico 01') || p.nome.toLowerCase().includes('medico 01'))) {
-        p.especialidade = 'Cardiologia';
+      const spec = (p.especialidade || '').trim();
+      if (!spec || spec.toLowerCase() === 'médico' || spec.toLowerCase() === 'medico') {
+        if (p.nome && (p.nome.toLowerCase().includes('médico 01') || p.nome.toLowerCase().includes('medico 01'))) {
+          p.especialidade = 'Cardiologia';
+        } else {
+          p.especialidade = 'Clínico Geral';
+        }
+      }
+      if (p.email && ['medico02@teste.com.br', 'medico03@teste.com.br', 'dr.teste@teste.com'].includes(p.email.toLowerCase())) {
+        p.especialidade = 'Clínico Geral';
       }
     });
     return res.json(professionals);
@@ -296,7 +317,7 @@ const registerProfessional = async (req, res) => {
       estado: estado || '',
       numero_conselho,
       tipo_profissional: tipo_profissional || null,
-      especialidade: especialidade || null,
+      especialidade: (especialidade && especialidade.trim().toLowerCase() !== 'médico' && especialidade.trim().toLowerCase() !== 'medico') ? especialidade : 'Clínico Geral',
       email,
       celular,
       valor_consulta: req.body.valor_consulta ? parseFloat(req.body.valor_consulta) : 150.00,
@@ -372,7 +393,9 @@ const updateProfessional = async (req, res) => {
       estado: estado !== undefined ? estado : prof.estado,
       numero_conselho: numero_conselho !== undefined ? numero_conselho : prof.numero_conselho,
       tipo_profissional: tipo_profissional || prof.tipo_profissional,
-      especialidade: especialidade !== undefined ? especialidade : prof.especialidade,
+      especialidade: (especialidade && especialidade.trim().toLowerCase() !== 'médico' && especialidade.trim().toLowerCase() !== 'medico')
+        ? especialidade
+        : ((prof.especialidade && prof.especialidade.trim().toLowerCase() !== 'médico' && prof.especialidade.trim().toLowerCase() !== 'medico') ? prof.especialidade : 'Clínico Geral'),
       email: email || prof.email,
       celular: celular || prof.celular,
       valor_consulta: req.body.valor_consulta !== undefined ? parseFloat(req.body.valor_consulta) : prof.valor_consulta

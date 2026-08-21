@@ -1,6 +1,30 @@
 const db = require('../../knexfile');
 const dbHelper = require('../utils/dbHelper');
 
+const isShareExpired = (s) => {
+  if (!s) return false;
+  if (s.expira_em) {
+    const expDate = new Date(s.expira_em);
+    if (!isNaN(expDate.getTime()) && new Date() > expDate) return true;
+  }
+  if (s.duracao && s.duracao !== 'permanent' && s.duracao !== 'Permanente' && s.criado_em) {
+    const created = new Date(s.criado_em);
+    if (!isNaN(created.getTime())) {
+      let hours = 24;
+      const dur = String(s.duracao).toLowerCase();
+      if (dur.includes('d') || dur.includes('dia')) {
+        const days = parseInt(dur.replace(/[^0-9]/g, '')) || 7;
+        hours = days * 24;
+      } else {
+        hours = parseInt(dur.replace(/[^0-9]/g, '')) || 24;
+      }
+      const expDate = new Date(created.getTime() + hours * 60 * 60 * 1000);
+      if (!isNaN(expDate.getTime()) && new Date() > expDate) return true;
+    }
+  }
+  return false;
+};
+
 const ensureShareTableExist = async () => {
   try {
     const exists = await db.schema.hasTable('exames_compartilhados');
@@ -254,19 +278,16 @@ const getSharedExamByToken = async (req, res) => {
       return res.status(404).json({ error: 'Link de exame compartilhado não encontrado ou inválido.' });
     }
 
+    if (isShareExpired(share)) {
+      return res.status(410).json({
+        error: 'Este exame atingiu seu limite de horas e por isso não dá para ver mais o exame.',
+        expired: true,
+        expira_em: share.expira_em
+      });
+    }
+
     // Se NÃO estiver logado no sistema (req.user indisponível -> acesso público anônimo via link)
     if (!req.user) {
-      // Checar se o link expirou para o acesso público
-      if (share.expira_em) {
-        const expDate = new Date(share.expira_em);
-        if (!isNaN(expDate.getTime()) && new Date() > expDate) {
-          return res.status(410).json({
-            error: 'Este link de compartilhamento temporário expirou.',
-            expired: true,
-            expira_em: share.expira_em
-          });
-        }
-      }
 
       let exam = null;
       try {
@@ -536,6 +557,7 @@ const listSharedExams = async (req, res) => {
 
     const filteredShares = (shares || []).filter(s => {
       if (s.removido_pelo_medico) return false;
+      if (isShareExpired(s)) return false;
       if (isAdmin) return true;
       if (userClientId && parseInt(s.cliente_id) === userClientId) return true;
       if (userProfId && s.medico_id && parseInt(s.medico_id) === userProfId) return true;

@@ -938,7 +938,7 @@ export const CompanyAnamnesisConfig: React.FC = () => {
                       options={doctorsList.map(d => ({
                         id: d.id,
                         label: `Dr(a). ${d.nome}`,
-                        sublabel: d.especialidade || 'Médico',
+                        sublabel: (d.especialidade && d.especialidade.trim().toLowerCase() !== 'médico' && d.especialidade.trim().toLowerCase() !== 'medico') ? d.especialidade : 'Clínico Geral',
                         extra: d.numero_conselho || 'CRM'
                       }))}
                       value={shareDoctorId}
