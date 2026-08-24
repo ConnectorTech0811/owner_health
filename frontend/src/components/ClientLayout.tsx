@@ -62,6 +62,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
     {
       title: 'Minha Saúde',
       items: [
+        { label: 'Meus Agendamentos', path: '/client/appointments', icon: Calendar },
         { label: 'Carteirinha Digital', path: '/client/dashboard', icon: CreditCard },
         { label: 'Meus Dados', path: '/client/profile', icon: User },
         { label: 'Dependentes', path: '/client/dependents', icon: Users },

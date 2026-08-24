@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Loader2, Check, User, Shield, ChevronRight, ChevronLeft, Calendar as CalendarIcon, Phone, X, UserCheck, Trash2, Search } from 'lucide-react';
+import { MapPin, Loader2, Check, User, Shield, ChevronRight, ChevronLeft, Calendar as CalendarIcon, Phone, X, Search } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { API_URL } from '../../config';
-import { SearchableSelect } from '../../components/SearchableSelect';
-import { PatientAgendaCalendar } from '../../components/PatientAgendaCalendar';
 
 const ESPECIALIDADES = [
   'Clínico Geral', 'Cardiologia', 'Dermatologia', 'Endocrinologia', 'Fisioterapia',
@@ -40,23 +38,12 @@ export const ClientScheduling: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialSpecialty = searchParams.get('specialty') || '';
 
-  const [activeTab, setActiveTab] = useState<'calendar' | 'book' | 'access'>(initialSpecialty ? 'book' : 'calendar');
-
   const [loading, setLoading] = useState(false);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [bookingModal, setBookingModal] = useState<Professional | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
-
-
-
-  // Estados para Conceder Acesso ao Prontuário
-  const [doctorsList, setDoctorsList] = useState<any[]>([]);
-  const [selectedDoctorId, setSelectedDoctorId] = useState('');
-  const [activeAccesses, setActiveAccesses] = useState<any[]>([]);
-  const [grantingAccess, setGrantingAccess] = useState(false);
-  const [grantMessage, setGrantMessage] = useState('');
 
   // Filtros de busca
   const [specFilter, setSpecFilter] = useState(initialSpecialty);
@@ -83,8 +70,6 @@ export const ClientScheduling: React.FC = () => {
   useEffect(() => {
     fetchProfessionals();
     loadAppointments();
-    fetchDoctors();
-    fetchActiveAccesses();
   }, [initialSpecialty, activeProfileId]);
 
   useEffect(() => {
@@ -92,81 +77,6 @@ export const ClientScheduling: React.FC = () => {
       fetchMonthlyAvailability(bookingModal.id, calendarViewDate);
     }
   }, [bookingModal, calendarViewDate]);
-
-  const fetchDoctors = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/professionals`, { headers });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setDoctorsList(data.filter((p: any) => p.tipo_profissional === 'medico' && p.ativo !== false));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchActiveAccesses = async () => {
-    if (!activeProfileId) return;
-    try {
-      const res = await fetch(`${API_URL}/api/access?cliente_id=${activeProfileId}`, { headers });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setActiveAccesses(data);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleGrantDoctorAccess = async () => {
-    if (!selectedDoctorId || !activeProfileId) {
-      alert('Selecione um médico para conceder o acesso.');
-      return;
-    }
-    setGrantingAccess(true);
-    setGrantMessage('');
-    try {
-      const res = await fetch(`${API_URL}/api/access/grant`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          cliente_id: parseInt(activeProfileId),
-          medico_id: parseInt(selectedDoctorId),
-          concedido_por: 'paciente'
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao conceder acesso');
-      setGrantMessage('Acesso concedido com sucesso! Notificação enviada ao médico.');
-      setSelectedDoctorId('');
-      fetchActiveAccesses();
-      setTimeout(() => setGrantMessage(''), 3000);
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setGrantingAccess(false);
-    }
-  };
-
-  const handleRevokeDoctorAccess = async (medicoId: number) => {
-    if (!confirm('Deseja revogar o acesso deste médico ao seu prontuário?')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/access/revoke`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          cliente_id: parseInt(activeProfileId!),
-          medico_id: medicoId
-        })
-      });
-      if (res.ok) {
-        alert('Acesso revogado com sucesso.');
-        fetchActiveAccesses();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const fetchProfessionals = async () => {
     setLoading(true);
@@ -403,288 +313,153 @@ export const ClientScheduling: React.FC = () => {
     }
   };
 
-
-
   return (
     <div className="space-y-6 animate-fadeIn font-sans">
       {/* Title Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Agendamentos & Permissões Médicas</h1>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Agendar Consulta</h1>
           <p className="text-sm text-slate-500 mt-1 font-medium">
-            Gerencie suas consultas no mês e semana e conceda acesso ao seu prontuário médico
+            Encontre médicos credenciados por especialidade, clínica e localidade e marque sua consulta
           </p>
         </div>
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-2xl text-xs font-bold border border-blue-100 self-start md:self-auto">
-          <CalendarIcon className="w-4 h-4 text-blue-600" /> Agenda do Paciente
+          <Search className="w-4 h-4 text-blue-600" /> Marcar Consulta
         </div>
       </div>
 
-      {/* Abas Superiores Estilo Pilha (Igual à tela de Exames) */}
-      <div className="flex bg-slate-200/70 p-1.5 rounded-2xl shadow-inner gap-1">
-        <button
-          onClick={() => setActiveTab('calendar')}
-          className={`flex-1 py-3 text-xs sm:text-sm font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
-            activeTab === 'calendar'
-              ? 'bg-white text-blue-600 shadow-md'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <CalendarIcon className="w-4 h-4 text-blue-600" /> Minhas Consultas & Calendário
-        </button>
+      {/* Interface de Agendamento */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fadeIn">
+        {/* Formulário de Filtros - Col 4 */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 space-y-4">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Filtros de Pesquisa Médica</h3>
 
-        <button
-          onClick={() => setActiveTab('book')}
-          className={`flex-1 py-3 text-xs sm:text-sm font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
-            activeTab === 'book'
-              ? 'bg-white text-blue-600 shadow-md'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Search className="w-4 h-4 text-blue-600" /> Agendar Consulta
-        </button>
+            <div className="space-y-3 text-xs font-semibold text-slate-600">
+              <div>
+                <label className="block text-slate-500 mb-1">Buscar por Especialidade</label>
+                <select
+                  value={specFilter}
+                  onChange={e => setSpecFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:outline-none focus:border-blue-500 transition"
+                >
+                  <option value="">Todas as especialidades</option>
+                  {ESPECIALIDADES.map(spec => (
+                    <option key={spec} value={spec}>{spec}</option>
+                  ))}
+                </select>
+              </div>
 
-        <button
-          onClick={() => setActiveTab('access')}
-          className={`flex-1 py-3 text-xs sm:text-sm font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
-            activeTab === 'access'
-              ? 'bg-white text-blue-600 shadow-md'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <UserCheck className="w-4 h-4 text-indigo-600" /> Conceder Acesso ao Prontuário
-        </button>
-      </div>
-
-      {/* ABA 1: CALENDÁRIO E MINHAS CONSULTAS */}
-      {activeTab === 'calendar' && (
-        <div className="animate-fadeIn">
-          <PatientAgendaCalendar appointments={appointments} />
-        </div>
-      )}
-
-      {/* ABA 2: AGENDAR CONSULTA (BUSCA DE MÉDICOS E ESPECIALIDADES) */}
-      {activeTab === 'book' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fadeIn">
-          {/* Formulário de Filtros - Col 4 */}
-          <div className="lg:col-span-4 space-y-4">
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Filtros de Pesquisa Médica</h3>
-
-              <div className="space-y-3 text-xs font-semibold text-slate-600">
-                <div>
-                  <label className="block text-slate-500 mb-1">Buscar por Especialidade</label>
-                  <select
-                    value={specFilter}
-                    onChange={e => setSpecFilter(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:outline-none focus:border-blue-500 transition"
-                  >
-                    <option value="">Todas as especialidades</option>
-                    {ESPECIALIDADES.map(spec => (
-                      <option key={spec} value={spec}>{spec}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 mb-1">Nome do Profissional</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Ex: Dr. Roberto"
-                      value={nameFilter}
-                      onChange={e => setNameFilter(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500 transition"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 mb-1">Hospital / Clínica / Consultório</label>
+              <div>
+                <label className="block text-slate-500 mb-1">Nome do Profissional</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Ex: Clínica Saúde Total"
-                    value={clinicFilter}
-                    onChange={e => setClinicFilter(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500 transition"
+                    placeholder="Ex: Dr. Roberto"
+                    value={nameFilter}
+                    onChange={e => setNameFilter(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500 transition"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-slate-500 mb-1">Plano de Saúde Aceito</label>
+              <div>
+                <label className="block text-slate-500 mb-1">Hospital / Clínica / Consultório</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Clínica Saúde Total"
+                  value={clinicFilter}
+                  onChange={e => setClinicFilter(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 mb-1">Plano de Saúde Aceito</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Unimed, SulAmérica"
+                  value={planFilter}
+                  onChange={e => setPlanFilter(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 mb-1">Localidade (CEP)</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Ex: Unimed, SulAmérica"
-                    value={planFilter}
-                    onChange={e => setPlanFilter(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500 transition"
+                    placeholder="00000-000"
+                    maxLength={9}
+                    value={cepFilter}
+                    onChange={e => setCepFilter(e.target.value.replace(/\D/g,'').replace(/(\d{5})(\d)/,'$1-$2').slice(0,9))}
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500 transition"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 mb-1">Localidade (CEP)</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="00000-000"
-                      maxLength={9}
-                      value={cepFilter}
-                      onChange={e => setCepFilter(e.target.value.replace(/\D/g,'').replace(/(\d{5})(\d)/,'$1-$2').slice(0,9))}
-                      className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500 transition"
-                    />
-                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Lista de Resultados de Médicos - Col 8 */}
-          <div className="lg:col-span-8 space-y-4">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Profissionais Credenciados ({filteredProfessionals.length})</h3>
-
-            {loading ? (
-              <div className="flex justify-center items-center py-20 bg-white border border-slate-200 rounded-2xl shadow-sm"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>
-            ) : filteredProfessionals.length === 0 ? (
-              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center shadow-sm">
-                <User className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                <p className="text-sm text-slate-400 font-bold">Nenhum profissional encontrado com os filtros atuais.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {filteredProfessionals.map(prof => (
-                  <div key={prof.id} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-black text-slate-800 text-sm">{prof.nome}</h4>
-                        <span className="bg-blue-50 text-blue-600 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border border-blue-100">{prof.especialidade}</span>
-                      </div>
-                      <p className="text-xs text-slate-500 font-medium">{prof.conselho} • <b>{prof.clinica}</b></p>
-                      
-                      <p className="text-xs text-slate-400 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>{prof.cidade} - {prof.estado} (CEP: {prof.cep})</span>
-                      </p>
-
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {prof.planos.map(plan => (
-                          <span key={plan} className="flex items-center gap-0.5 bg-slate-50 text-slate-500 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-slate-200/50">
-                            <Shield className="w-3 h-3 text-slate-400" /> {plan}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex sm:flex-col items-end gap-3 self-stretch sm:self-center pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100/80 justify-end">
-                      <button
-                        onClick={() => {
-                          setBookingModal(prof);
-                          setCalendarViewDate(new Date());
-                          setBookingSlot(null);
-                          setBookingSuccess(false);
-                          setBookingPhone(prof.celular || '');
-                        }}
-                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <span>Agendar</span> <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
-      )}
 
-      {/* ABA 3: CONCEDER ACESSO AO PRONTUÁRIO */}
-      {activeTab === 'access' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4 animate-fadeIn">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-indigo-600" />
-              <span>Conceder Acesso ao Prontuário</span>
-            </h3>
-            <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-full font-bold uppercase">
-              LGPD Protegido
-            </span>
-          </div>
+        {/* Lista de Resultados de Médicos - Col 8 */}
+        <div className="lg:col-span-8 space-y-4">
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Profissionais Credenciados ({filteredProfessionals.length})</h3>
 
-          <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-            Escolha um médico da clínica para autorizá-lo a visualizar seu prontuário médico completo.
-          </p>
+          {loading ? (
+            <div className="flex justify-center items-center py-20 bg-white border border-slate-200 rounded-2xl shadow-sm"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>
+          ) : filteredProfessionals.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center shadow-sm">
+              <User className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="text-sm text-slate-400 font-bold">Nenhum profissional encontrado com os filtros atuais.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {filteredProfessionals.map(prof => (
+                <div key={prof.id} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-black text-slate-800 text-sm">{prof.nome}</h4>
+                      <span className="bg-blue-50 text-blue-600 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border border-blue-100">{prof.especialidade}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">{prof.conselho} • <b>{prof.clinica}</b></p>
+                    
+                    <p className="text-xs text-slate-400 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span>{prof.cidade} - {prof.estado} (CEP: {prof.cep})</span>
+                    </p>
 
-          <div className="space-y-4">
-            {(() => {
-              const grantedDoctorIds = activeAccesses.map(a => a.medico_id);
-              const availableDoctors = doctorsList.filter(doc => !grantedDoctorIds.includes(doc.id));
-
-              return (
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                  <div className="md:col-span-9">
-                    <SearchableSelect
-                      label="Selecione o Médico da Clínica"
-                      options={availableDoctors.map(doc => ({
-                        id: doc.id,
-                        label: `Dr(a). ${doc.nome}`,
-                        sublabel: (doc.especialidade && doc.especialidade.trim().toLowerCase() !== 'médico' && doc.especialidade.trim().toLowerCase() !== 'medico') ? doc.especialidade : 'Clínico Geral',
-                        extra: doc.numero_conselho || 'CRM'
-                      }))}
-                      value={selectedDoctorId}
-                      onChange={val => setSelectedDoctorId(val ? String(val) : '')}
-                      placeholder="Digite para buscar médico por Nome, CRM ou Especialidade..."
-                    />
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {prof.planos.map(plan => (
+                        <span key={plan} className="flex items-center gap-0.5 bg-slate-50 text-slate-500 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-slate-200/50">
+                          <Shield className="w-3 h-3 text-slate-400" /> {plan}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="md:col-span-3">
+                  <div className="flex sm:flex-col items-end gap-3 self-stretch sm:self-center pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100/80 justify-end">
                     <button
-                      onClick={handleGrantDoctorAccess}
-                      disabled={grantingAccess || !selectedDoctorId}
-                      className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      onClick={() => {
+                        setBookingModal(prof);
+                        setCalendarViewDate(new Date());
+                        setBookingSlot(null);
+                        setBookingSuccess(false);
+                        setBookingPhone(prof.celular || '');
+                      }}
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
                     >
-                      {grantingAccess ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
-                      <span>{grantingAccess ? 'Concedendo...' : 'Conceder Acesso'}</span>
+                      <span>Agendar</span> <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              );
-            })()}
-
-            {grantMessage && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-bold text-center">
-                {grantMessage}
-              </div>
-            )}
-
-            {/* Médicos com acesso ativo concedido */}
-            {activeAccesses.length > 0 && (
-              <div className="pt-3 border-t border-slate-100 space-y-3">
-                <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Médicos Autorizados Atualmente</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {activeAccesses.map(acc => (
-                    <div key={acc.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-slate-800">{acc.medico_nome}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                          {(acc.medico_especialidade && acc.medico_especialidade.trim().toLowerCase() !== 'médico' && acc.medico_especialidade.trim().toLowerCase() !== 'medico') ? acc.medico_especialidade : 'Clínico Geral'} • Liberado por: {acc.concedido_por}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleRevokeDoctorAccess(acc.medico_id)}
-                        className="text-red-500 hover:text-red-700 text-xs font-bold p-2 rounded-xl hover:bg-red-50 transition cursor-pointer flex items-center gap-1 border border-red-200"
-                        title="Revogar Acesso ao Prontuário"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Revogar
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Modal de Agendamento com Calendário */}
       {bookingModal && (

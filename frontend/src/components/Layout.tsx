@@ -46,7 +46,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   React.useEffect(() => {
     if (activeRole === 'client' || activeRole === 'dependent') {
-      navigate('/client/dashboard');
+      navigate('/client/appointments');
     } else if (activeRole === 'company') {
       navigate('/company/dashboard');
     } else if (activeRole === 'professional') {
@@ -58,7 +58,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     localStorage.setItem('activeRole', role);
     setRoleMenuOpen(false);
     if (role === 'client' || role === 'dependent') {
-      navigate('/client/dashboard');
+      navigate('/client/appointments');
     } else if (role === 'company') {
       navigate('/company/dashboard');
     } else if (role === 'professional') {

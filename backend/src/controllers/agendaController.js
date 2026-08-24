@@ -249,7 +249,7 @@ exports.requestAgendaToken = async (req, res) => {
     // Disparar notificação oficial ao paciente com o código de confirmação
     if (cliente && cliente.usuario_id) {
       try {
-        const mensagem = `🔑 Seu Código de Validação de Atendimento na Owner Health: Para validar sua consulta com ${medicoNome} em ${dataFormatada} às ${horaStr}, passe o token para a secretária: ${tokenConfirmacao}`;
+        const mensagem = `🔑 Seu Código de Validação de Atendimento na Owner Health: Para validar sua consulta com ${medicoNome} em ${dataFormatada} às ${horaStr}, passe o token para o médico: ${tokenConfirmacao}`;
 
         const hasNotifTable = await db.schema.hasTable('notificacoes_usuarios');
         if (!hasNotifTable) {

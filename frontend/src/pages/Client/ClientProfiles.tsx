@@ -89,7 +89,7 @@ export const ClientProfiles: React.FC = () => {
     localStorage.setItem('activeProfileRole', profile.role);
     localStorage.setItem('activeRole', profile.role === 'client' ? 'client' : 'dependent');
     
-    const from = location.state?.from || '/client/dashboard';
+    const from = location.state?.from || '/client/appointments';
     navigate(from);
   };
 

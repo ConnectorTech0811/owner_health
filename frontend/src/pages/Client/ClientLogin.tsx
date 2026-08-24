@@ -67,7 +67,7 @@ export const ClientLogin: React.FC = () => {
         localStorage.setItem('activeProfileRole', singleProfile.role);
         localStorage.setItem('activeRole', 'client'); // Padrão
 
-        const from = location.state?.from || '/client/dashboard';
+        const from = location.state?.from || '/client/appointments';
         navigate(from);
       } else {
         throw new Error('Nenhum perfil ativo associado a esta conta.');

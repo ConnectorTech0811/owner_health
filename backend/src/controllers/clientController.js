@@ -495,19 +495,8 @@ const getPatientObservations = async (req, res) => {
     });
 
     let podeAdicionar = false;
-    if (doctor) {
-      // Verificar se há pelo menos 1 consulta concluída entre este médico e o paciente
-      const consultaConcluida = await db('agendas')
-        .where({
-          cliente_id: targetClienteId,
-          profissional_id: doctor.id
-        })
-        .whereIn('status', ['concluido', 'Concluída'])
-        .first();
-
-      if (consultaConcluida) {
-        podeAdicionar = true;
-      }
+    if (doctor || isClinicOrAdmin) {
+      podeAdicionar = true;
     }
 
     return res.json({
@@ -548,21 +537,6 @@ const createPatientObservation = async (req, res) => {
 
     if (!doctor) {
       return res.status(403).json({ error: 'Somente profissionais médicos credenciados podem registrar observações.' });
-    }
-
-    // Validação de segurança: Verificar consulta concluída
-    const consultaConcluida = await db('agendas')
-      .where({
-        cliente_id: targetClienteId,
-        profissional_id: doctor.id
-      })
-      .whereIn('status', ['concluido', 'Concluída'])
-      .first();
-
-    if (!consultaConcluida) {
-      return res.status(403).json({
-        error: 'Inclusão bloqueada: É necessário possuir ao menos 1 consulta concluída com este paciente para registrar novas observações clínicas.'
-      });
     }
 
     const [insertedId] = await db('paciente_observacoes_medicas').insert({

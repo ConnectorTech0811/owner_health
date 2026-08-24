@@ -34,6 +34,7 @@ import { ClientPrivacy } from './pages/Client/ClientPrivacy';
 import { ClientScheduling } from './pages/Client/ClientScheduling';
 import { ClientEvolution } from './pages/Client/ClientEvolution';
 import { ClientArticles } from './pages/Client/ClientArticles';
+import { ClientMyAppointments } from './pages/Client/ClientMyAppointments';
 
 // Recuperação de Senha
 import { ForgotPassword } from './pages/ForgotPassword';
@@ -148,6 +149,7 @@ function App() {
           <PrivateRoute redirectTo="/client/login">
             <ClientLayout>
               <Routes>
+                <Route path="/appointments" element={<ClientMyAppointments />} />
                 <Route path="/dashboard" element={<ClientDashboard />} />
                 <Route path="/profile" element={<ClientProfile />} />
                 <Route path="/dependents" element={<ClientDependents />} />
@@ -164,7 +166,7 @@ function App() {
                 <Route path="/scheduling" element={<ClientScheduling />} />
                 <Route path="/evolution" element={<ClientEvolution />} />
                 <Route path="/articles" element={<ClientArticles />} />
-                <Route path="*" element={<Navigate to="/client/dashboard" replace />} />
+                <Route path="*" element={<Navigate to="/client/appointments" replace />} />
               </Routes>
             </ClientLayout>
           </PrivateRoute>

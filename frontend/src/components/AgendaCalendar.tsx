@@ -526,7 +526,7 @@ export function AgendaCalendar({
                               <button onClick={() => onCancelBooking(slot.id)} className="text-xs flex items-center gap-1 font-medium text-red-600 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors"><XCircle size={14}/> Desmarcar</button>
                             </div>
 
-                            {onCompleteSlot && !isDoctor && (
+                            {onCompleteSlot && isDoctor && (
                               <button
                                 onClick={() => onCompleteSlot(slot.id)}
                                 className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"

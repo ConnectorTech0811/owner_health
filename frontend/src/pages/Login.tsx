@@ -73,9 +73,9 @@ export const Login = () => {
           localStorage.setItem('activeProfileName', singleProfile.nome);
           localStorage.setItem('activeProfileRole', singleProfile.role);
           localStorage.setItem('activeRole', singleProfile.role === 'client' ? 'client' : 'dependent');
-          navigate('/client/dashboard');
+          navigate('/client/appointments');
         } else {
-          navigate('/client/dashboard');
+          navigate('/client/appointments');
         }
       } else if (primaryRole === 'professional') {
         navigate('/professional/scheduling');
