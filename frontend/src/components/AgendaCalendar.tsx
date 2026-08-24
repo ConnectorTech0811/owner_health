@@ -36,17 +36,12 @@ export function AgendaCalendar({
   onDeleteSlot,
   onBookSlot,
   onCancelBooking,
-  onCompleteSlot,
   onDeleteDaySlots,
   isSecretary = false,
 }: CalendarProps) {
   const [viewMode, setViewMode] = useState<'semana' | 'mes'>(isSecretary ? 'mes' : 'semana');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-
-  const userRaw = localStorage.getItem('user');
-  const user = userRaw ? JSON.parse(userRaw) : null;
-  const isDoctor = user?.tipo_profissional === 'medico';
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -525,15 +520,6 @@ export function AgendaCalendar({
                               <span className="text-xs font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">Consulta agendada</span>
                               <button onClick={() => onCancelBooking(slot.id)} className="text-xs flex items-center gap-1 font-medium text-red-600 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors"><XCircle size={14}/> Desmarcar</button>
                             </div>
-
-                            {onCompleteSlot && isDoctor && (
-                              <button
-                                onClick={() => onCompleteSlot(slot.id)}
-                                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                              >
-                                <CheckCircle2 size={15} /> Confirmar Consulta Concluída
-                              </button>
-                            )}
                           </div>
                         )}
                       </div>
