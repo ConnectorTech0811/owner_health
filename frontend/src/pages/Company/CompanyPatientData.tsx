@@ -1129,8 +1129,8 @@ className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indi
 
       {/* Modal de Liberar Acesso ao Médico (Com Duas Abas Separadas) */}
       {showGrantModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl border border-slate-100 animate-fadeIn space-y-5 max-h-[90vh] overflow-y-auto my-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-2xl min-h-[460px] shadow-2xl border border-slate-100 animate-fadeIn space-y-6 max-h-[90vh] overflow-y-auto my-auto relative">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-indigo-600" />

@@ -37,7 +37,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options,
   value,
   onChange,
-  placeholder = 'Selecione ou digite para buscar por Nome ou CPF...',
+  placeholder = 'Digite para buscar...',
   label,
   required = false,
   disabled = false,
@@ -48,7 +48,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedOption = options.find(opt => String(opt.id) === String(value));
 
@@ -57,26 +57,17 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+        setSearchTerm('');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Focar no input de busca ao abrir e resetar paginação
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentPage(1);
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
-    }
-  }, [isOpen]);
-
-  // Resetar página ao mudar termo de busca
+  // Resetar página de paginação ao mudar busca ou abrir dropdown
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, isOpen]);
 
   // Filtrar opções dinamicamente por Nome, CPF, CRM, sublabel, etc.
   const filteredOptions = options.filter(opt => {
@@ -113,7 +104,30 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     e.stopPropagation();
     onChange(null, undefined);
     setSearchTerm('');
+    if (inputRef.current) inputRef.current.focus();
   };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    if (!isOpen) setIsOpen(true);
+  };
+
+  const handleInputFocus = () => {
+    if (!disabled) setIsOpen(true);
+  };
+
+  // Valor do único input de busca:
+  // Se está aberto: mostra o que o usuário está digitando (searchTerm)
+  // Se está fechado: mostra a opção selecionada ou vazio
+  const displayValue = isOpen
+    ? searchTerm
+    : selectedOption
+    ? `${selectedOption.label}${selectedOption.sublabel ? ` (${selectedOption.sublabel})` : ''}`
+    : '';
+
+  const displayPlaceholder = isOpen && selectedOption
+    ? `${selectedOption.label}${selectedOption.sublabel ? ` (${selectedOption.sublabel})` : ''}`
+    : placeholder;
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
@@ -123,63 +137,55 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         </label>
       )}
 
-      {/* Trigger Button */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => !disabled && setIsOpen(prev => !prev)}
-        className={`w-full text-left bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-medium focus:outline-none transition flex items-center justify-between gap-2 cursor-pointer ${
-          isOpen ? 'border-indigo-500 bg-white ring-2 ring-indigo-500/20' : 'hover:border-slate-300'
+      {/* Campo de Entrada Único / Trigger */}
+      <div
+        className={`relative flex items-center bg-slate-50 border rounded-xl transition ${
+          isOpen
+            ? 'border-indigo-500 bg-white ring-2 ring-indigo-500/20'
+            : 'border-slate-200 hover:border-slate-300'
         } ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}`}
       >
-        <span className={`truncate ${selectedOption ? 'text-slate-800 font-bold' : 'text-slate-400'}`}>
-          {selectedOption
-            ? `${selectedOption.label}${selectedOption.sublabel ? ` (${selectedOption.sublabel})` : ''}`
-            : placeholder}
+        <span className="pl-3.5 text-slate-400 pointer-events-none flex items-center shrink-0">
+          <Search className="w-4 h-4 text-indigo-500/80" />
         </span>
-        <div className="flex items-center gap-1 shrink-0 text-slate-400">
-          {selectedOption && !disabled && (
-            <span
+
+        <input
+          ref={inputRef}
+          type="text"
+          disabled={disabled}
+          value={displayValue}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          placeholder={displayPlaceholder}
+          className="w-full bg-transparent pl-2.5 pr-8 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:outline-none"
+        />
+
+        <div className="absolute right-2.5 flex items-center gap-1 text-slate-400">
+          {(selectedOption || searchTerm) && !disabled && (
+            <button
+              type="button"
               onClick={handleClear}
               className="p-1 hover:text-red-500 hover:bg-slate-100 rounded-md transition cursor-pointer"
               title="Limpar seleção"
             >
               <X className="w-3.5 h-3.5" />
-            </span>
+            </button>
           )}
-          <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180 text-indigo-600' : ''}`} />
+          <button
+            type="button"
+            onClick={() => !disabled && setIsOpen(prev => !prev)}
+            className="p-1 hover:text-indigo-600 transition cursor-pointer"
+          >
+            <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180 text-indigo-600' : ''}`} />
+          </button>
         </div>
-      </button>
+      </div>
 
-      {/* Floating Dropdown Overlay (Paginated & Mobile Responsive) */}
+      {/* Floating Options Dropdown ONLY (sem segundo input duplicado!) */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fadeIn space-y-2 p-2 max-w-full">
-          {/* Search Field */}
-          <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-              <Search className="w-3.5 h-3.5" />
-            </span>
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Digite o nome ou CPF para buscar..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:bg-white transition"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Options List (Max 8 items per view) */}
-          <div className="max-h-64 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden animate-fadeIn space-y-2 p-2 max-w-full">
+          {/* Listagem de Opções */}
+          <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
             {filteredOptions.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400 font-medium">
                 {emptyMessage}
@@ -192,7 +198,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     key={opt.id}
                     type="button"
                     onClick={() => handleSelect(opt)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition cursor-pointer ${
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition cursor-pointer ${
                       isSelected
                         ? 'bg-indigo-50 text-indigo-900 font-bold border border-indigo-100'
                         : 'hover:bg-slate-50 text-slate-700 font-medium'
@@ -201,7 +207,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     <div className="truncate pr-2">
                       <div className="font-bold text-slate-800">{opt.label}</div>
                       {(opt.sublabel || opt.extra) && (
-                        <div className="text-[10px] text-slate-400 font-medium">
+                        <div className="text-[10px] text-slate-400 font-medium mt-0.5">
                           {opt.sublabel && <span>{opt.sublabel}</span>}
                           {opt.sublabel && opt.extra && <span> • </span>}
                           {opt.extra && <span>{opt.extra}</span>}
@@ -215,7 +221,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             )}
           </div>
 
-          {/* Pagination Controls for > 8 items */}
+          {/* Controle de Paginação (se > 8 itens) */}
           {filteredOptions.length > ITEMS_PER_PAGE && (
             <div className="flex items-center justify-between pt-2 border-t border-slate-100 px-2 text-[11px] font-semibold text-slate-500">
               <span>
@@ -227,18 +233,18 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 rounded-lg text-slate-700 transition cursor-pointer disabled:cursor-not-allowed"
+                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 rounded-lg text-slate-700 transition cursor-pointer disabled:cursor-not-allowed text-[10px] font-bold"
                 >
                   Anterior
                 </button>
-                <span className="px-1 text-slate-400">
+                <span className="px-1 text-slate-400 text-[10px]">
                   {currentPage} / {totalPages}
                 </span>
                 <button
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 rounded-lg text-slate-700 transition cursor-pointer disabled:cursor-not-allowed"
+                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 rounded-lg text-slate-700 transition cursor-pointer disabled:cursor-not-allowed text-[10px] font-bold"
                 >
                   Próxima
                 </button>
