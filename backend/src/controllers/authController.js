@@ -321,7 +321,7 @@ const forgotPassword = async (req, res) => {
       }
     });
 
-    const frontendBaseUrl = process.env.FRONTEND_URL || (req.headers && req.headers.origin && !req.headers.origin.includes('localhost') ? req.headers.origin : 'https://owner-health-ktsf.vercel.app');
+    const frontendBaseUrl = process.env.FRONTEND_URL || (req.headers && req.headers.origin && !req.headers.origin.includes('localhost') ? req.headers.origin : (req.headers && req.headers.host ? (req.headers['x-forwarded-proto'] || 'https') + '://' + req.headers.host : 'https://app.ownerhealth.com.br'));
     const resetLink = `${frontendBaseUrl}/reset-password?token=${token}`;
 
     const mailOptions = {

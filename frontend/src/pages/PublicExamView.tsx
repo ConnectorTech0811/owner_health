@@ -50,7 +50,7 @@ export const PublicExamView: React.FC = () => {
   const [isExpired, setIsExpired] = useState(false);
   const [examData, setExamData] = useState<PublicExamData | null>(null);
 
-  const SYSTEM_URL = 'https://owner-health-ktsf.vercel.app';
+  const SYSTEM_URL = typeof window !== 'undefined' ? window.location.origin : 'https://app.ownerhealth.com.br';
 
   useEffect(() => {
     if (!token) {

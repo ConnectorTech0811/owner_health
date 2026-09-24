@@ -25,8 +25,8 @@ const createTransporter = () => {
  * @param {string} opts.senha      - Senha temporária (em texto plano, antes do hash)
  * @param {string} opts.perfil     - Ex: 'Cliente', 'Profissional de Saúde'
  */
-const sendFirstAccessEmail = async ({ to, nome, email, senha, perfil = 'Usuário' }) => {
-  const sysUrl = process.env.SYSTEM_URL || process.env.FRONTEND_URL || 'https://owner-health-ktsf.vercel.app';
+const sendFirstAccessEmail = async ({ to, nome, email, senha, perfil = 'Usuário', origin }) => {
+  const sysUrl = origin || process.env.SYSTEM_URL || process.env.FRONTEND_URL || 'https://app.ownerhealth.com.br';
   const transporter = createTransporter();
 
   const mailOptions = {
@@ -95,9 +95,9 @@ const sendFirstAccessEmail = async ({ to, nome, email, senha, perfil = 'Usuário
   }
 };
 
-const sendAppointmentTokenEmail = async ({ to, pacienteNome, medicoNome, dataFormatada, horaStr, tokenConfirmacao }) => {
+const sendAppointmentTokenEmail = async ({ to, pacienteNome, medicoNome, dataFormatada, horaStr, tokenConfirmacao, origin }) => {
   if (!to) return;
-  const sysUrl = process.env.SYSTEM_URL || process.env.FRONTEND_URL || 'https://owner-health-ktsf.vercel.app';
+  const sysUrl = origin || process.env.SYSTEM_URL || process.env.FRONTEND_URL || 'https://app.ownerhealth.com.br';
   const transporter = createTransporter();
 
   const mailOptions = {

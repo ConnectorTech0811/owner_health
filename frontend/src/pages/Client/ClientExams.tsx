@@ -370,15 +370,7 @@ startxref
       }
 
       const buildShareUrl = (tok: string) => {
-        const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-        if (isProd) {
-          return `https://owner-health-ktsf.vercel.app/exames-compartilhados?token=${tok}`;
-        }
-        let baseOrigin = window.location.origin;
-        if (window.location.hostname === 'localhost' && baseOrigin.startsWith('https:')) {
-          baseOrigin = baseOrigin.replace('https:', 'http:');
-        }
-        return `${baseOrigin}/exames-compartilhados?token=${tok}`;
+        return `${window.location.origin}/exames-compartilhados?token=${tok}`;
       };
 
       const shareUrl = buildShareUrl(tokenGenerated);
@@ -403,12 +395,7 @@ startxref
       fetchSharedExams();
     } catch {
       const tokenGenerated = 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
-      const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-      let baseOrigin = isProd ? 'https://owner-health-ktsf.vercel.app' : window.location.origin;
-      if (window.location.hostname === 'localhost' && baseOrigin.startsWith('https:')) {
-        baseOrigin = baseOrigin.replace('https:', 'http:');
-      }
-      const shareUrl = isProd ? `https://owner-health-ktsf.vercel.app/exames-compartilhados?token=${tokenGenerated}` : `${baseOrigin}/exames-compartilhados?token=${tokenGenerated}`;
+      const shareUrl = `${window.location.origin}/exames-compartilhados?token=${tokenGenerated}`;
       
       const newShare = {
         id: tokenGenerated,
@@ -642,7 +629,7 @@ startxref
                             <td className="py-3.5 px-4 text-right flex items-center justify-end gap-2">
                               <button
                                 onClick={() => {
-                                  const urlToCopy = sh.link || `https://owner-health-ktsf.vercel.app/exames-compartilhados?token=${sh.token || sh.id}`;
+                                  const urlToCopy = sh.link || `${window.location.origin}/exames-compartilhados?token=${sh.token || sh.id}`;
                                   navigator.clipboard.writeText(urlToCopy);
                                   alert('Link seguro copiado para a área de transferência!');
                                 }}
