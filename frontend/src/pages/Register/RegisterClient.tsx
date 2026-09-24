@@ -112,18 +112,25 @@ export const RegisterClient: React.FC = () => {
     setError('');
 
     try {
-      const res = await fetch(`${API_URL}/api/auth/register/client`, {
+      const res = await fetch(`${API_URL}/api/clients/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: 'Erro inesperado na resposta do servidor' };
+      }
+
       if (!res.ok) throw new Error(data.error || 'Erro ao realizar cadastro');
 
       setSuccess(true);
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
+      else setError('Erro ao realizar cadastro');
     } finally { setLoading(false); }
   };
 
