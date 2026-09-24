@@ -21,11 +21,11 @@ sudo podman run -d --name owner-backend --network host \
   --env-file /home/opc/owner-health-vm/backend.env \
   --restart=always owner-backend:latest
 
-# 3. Reconstruir e reiniciar o Frontend
+# 3. Reconstruir e reiniciar o Frontend (com SSL)
 echo "🎨 3/3 - Reconstruindo e reiniciando o Frontend..."
 sudo podman stop owner-frontend || true
 sudo podman rm owner-frontend || true
-sudo podman build -t owner-frontend:latest /home/opc/owner_health/frontend
+sudo podman build --no-cache -t owner-frontend:latest /home/opc/owner_health/frontend
 sudo podman run -d --name owner-frontend --network host \
   -v /etc/letsencrypt:/etc/letsencrypt:ro,Z \
   --restart=always owner-frontend:latest
